@@ -176,7 +176,10 @@ func startHaboPairingFlow(app *application.App) {
 		return
 	}
 	if state.ConnectURL != "" {
-		app.Event.Emit("habo:open-connect-url", state.ConnectURL)
+		if err := openExternalURL(state.ConnectURL); err != nil {
+			log.Warnf("Could not open the Habo Hub pairing page automatically: %v", err)
+			app.Event.Emit("habo:open-connect-url", state.ConnectURL)
+		}
 	}
 
 	deadline := time.Now().Add(10 * time.Minute)
@@ -445,6 +448,22 @@ func setupTray(app *application.App, dashboardWindow *application.WebviewWindow)
 	})
 
 	tray.SetMenu(menu)
+}
+
+func openExternalURL(url string) error {
+	if url == "" {
+		return nil
+	}
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", url)
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	default:
+		cmd = exec.Command("xdg-open", url)
+	}
+	return cmd.Start()
 }
 
 func openLogFile() {
