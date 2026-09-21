@@ -1,7 +1,7 @@
 <script>
   import { onDestroy } from 'svelte';
   import { Browser, Events } from '@wailsio/runtime';
-  import { DashboardService } from '../bindings/github.com/ao-data/albiondata-client/internal/dashboard/index.js';
+  import { DashboardService } from '../../bindings/github.com/ao-data/albiondata-client/internal/dashboard/index.js';
 
   let status = $state({
     CaptureRunning: false,
