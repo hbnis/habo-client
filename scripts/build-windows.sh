@@ -3,11 +3,11 @@
 set -eo pipefail
 
 rm -f rsrc_windows_*
-rm -f albiondata-client.exe
+rm -f habo-client.exe
 rm -f albiondata-client.*.bak
 rm -f .albiondata-client.*.old
 
-rm -f albiondata-client-amd64-installer.exe
+rm -f habo-client-amd64-installer.exe
 
 sudo apt-get update && sudo apt-get install -y nsis
 
@@ -18,9 +18,9 @@ export PATH="$PATH:$(go env GOPATH)/bin"
 go-winres make
 
 (cd frontend && npm ci && npm run build)
-env GOOS=windows GOARCH=amd64 go build -ldflags "-s -w -X main.version=$GITHUB_REF_NAME" -o albiondata-client.exe albiondata-client.go
+env GOOS=windows GOARCH=amd64 go build -ldflags "-s -w -X main.version=$GITHUB_REF_NAME" -o habo-client.exe albiondata-client.go
 
-go-winres patch albiondata-client.exe
+go-winres patch habo-client.exe
 
 cd pkg/nsis
 make nsis
@@ -28,7 +28,7 @@ make nsis
 cd ../..
 ls -la albiondata-client*
 
-cp albiondata-client.exe albiondata-client.exe.copy
-gzip -9 albiondata-client.exe
-mv albiondata-client.exe.gz update-windows-amd64.exe.gz
-mv albiondata-client.exe.copy albiondata-client.exe
+cp habo-client.exe habo-client.exe.copy
+gzip -9 habo-client.exe
+mv habo-client.exe.gz update-windows-amd64.exe.gz
+mv habo-client.exe.copy habo-client.exe
