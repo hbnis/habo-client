@@ -133,7 +133,7 @@ func clearHaboToken() error {
 	haboMu.Lock()
 	haboToken = ""
 	haboMu.Unlock()
-	ConfigGlobal.PrivateIngestBaseUrls = ""
+	SetPrivateIngestBaseURLs("")
 	SetUploadMode(UploadModePublic)
 	return nil
 }
@@ -204,7 +204,7 @@ func RefreshHaboAccount() HaboAccountState {
 	}
 
 	if payload.Connected {
-		ConfigGlobal.PrivateIngestBaseUrls = "habo+" + strings.TrimRight(payload.PrivateIngestURL, "/")
+		SetPrivateIngestBaseURLs("habo+" + strings.TrimRight(payload.PrivateIngestURL, "/"))
 		return HaboAccountState{
 			Connected:        true,
 			DisplayName:      payload.DisplayName,
