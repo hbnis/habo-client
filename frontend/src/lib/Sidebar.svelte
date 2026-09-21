@@ -15,6 +15,12 @@
     EncryptionStatus: '',
     UploadMode: 'public',
     PrivateReady: false,
+    HaboConnected: false,
+    HaboPairing: false,
+    HaboDisplayName: '',
+    HaboPairCode: '',
+    HaboConnectURL: '',
+    HaboError: '',
   });
 
   DashboardService.GetStatus().then((value) => (status = value));
@@ -39,6 +45,22 @@
     Browser.OpenURL(status.DriverHelpURL);
   }
 
+  async function connectHabo() {
+    if (status.HaboConnectURL) {
+      Browser.OpenURL(status.HaboConnectURL);
+      return;
+    }
+    await Events.Emit('habo:connect');
+  }
+
+  function finishPairing() {
+    if (status.HaboConnectURL) Browser.OpenURL(status.HaboConnectURL);
+  }
+
+  async function disconnectHabo() {
+    await Events.Emit('habo:disconnect');
+  }
+
   function openHub() {
     Browser.OpenURL('https://habonis.com');
   }
@@ -60,6 +82,34 @@
       <b>{captureLabel}</b>
       <span>{serverLabel}</span>
     </div>
+  </section>
+
+  <section class="account-card">
+    <div class="section-head">
+      <span>HABO HUB ACCOUNT</span>
+      <small class:connected={status.HaboConnected}>{status.HaboConnected ? 'CONNECTED' : status.HaboPairing ? 'PAIRING' : 'NOT CONNECTED'}</small>
+    </div>
+
+    {#if status.HaboConnected}
+      <div class="account-name">
+        <span class="account-dot"></span>
+        <div><b>{status.HaboDisplayName || 'Habo Hub user'}</b><small>Private scans available</small></div>
+      </div>
+      <button class="account-secondary" type="button" onclick={disconnectHabo}>Disconnect</button>
+    {:else if status.HaboPairing && status.HaboConnectURL}
+      <p class="pair-copy">Finish connecting in your browser.</p>
+      {#if status.HaboPairCode}
+        <div class="pair-code"><small>PAIRING CODE</small><b>{status.HaboPairCode}</b></div>
+      {/if}
+      <button class="account-primary" type="button" onclick={finishPairing}>Continue in browser</button>
+    {:else}
+      <p class="pair-copy">Connect your Habo Hub account to keep market scans private.</p>
+      <button class="account-primary" type="button" onclick={connectHabo}>Connect Habo Hub</button>
+    {/if}
+
+    {#if status.HaboError}
+      <p class="account-error">{status.HaboError}</p>
+    {/if}
   </section>
 
   <section class="mode-card">
@@ -155,7 +205,7 @@
   .brand strong { font-size: 1rem; }
   .brand span { color: var(--orange-bright); font-size: 0.7rem; font-weight: 700; }
 
-  .status-card, .mode-card, .warning, .update {
+  .status-card, .account-card, .mode-card, .warning, .update {
     border: 1px solid var(--border);
     border-radius: 12px;
     background: var(--bg-raised);
@@ -199,7 +249,68 @@
   }
   .status-dot.error { background: var(--red); }
 
-  .mode-card { padding: 0.9rem; }
+  .account-card, .mode-card { padding: 0.9rem; }
+  .section-head small.connected { color: var(--green); }
+  .account-name {
+    display: grid;
+    grid-template-columns: 9px minmax(0, 1fr);
+    align-items: center;
+    gap: 0.65rem;
+    margin: 0.2rem 0 0.75rem;
+  }
+  .account-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 0 5px rgba(134, 198, 111, 0.10);
+  }
+  .account-name > div { display: flex; min-width: 0; flex-direction: column; gap: 0.15rem; }
+  .account-name b { overflow: hidden; font-size: 0.8rem; text-overflow: ellipsis; white-space: nowrap; }
+  .account-name small, .pair-copy {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    line-height: 1.45;
+  }
+  .pair-code {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    margin: 0.7rem 0;
+    padding: 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-sunken);
+  }
+  .pair-code small { color: var(--text-faint); font-size: 0.58rem; font-weight: 800; letter-spacing: 0.08em; }
+  .pair-code b { color: var(--orange-bright); font-family: var(--font-mono); font-size: 0.9rem; letter-spacing: 0.04em; }
+  .account-primary, .account-secondary {
+    width: 100%;
+    margin-top: 0.7rem;
+    border-radius: 8px;
+    padding: 0.6rem 0.7rem;
+    font-size: 0.7rem;
+    font-weight: 850;
+    cursor: pointer;
+  }
+  .account-primary {
+    border: 1px solid var(--orange);
+    background: var(--orange);
+    color: #15100c;
+  }
+  .account-secondary {
+    border: 1px solid var(--border-strong);
+    background: var(--bg-sunken);
+    color: var(--text-muted);
+  }
+  .account-error {
+    margin: 0.65rem 0 0;
+    color: #ffaaa0;
+    font-size: 0.65rem;
+    line-height: 1.4;
+  }
   .section-head {
     display: flex;
     align-items: center;
