@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	logFileName = "albiondata-client.log"
+	logFileName = "habo-client.log"
 	maxLogFiles = 10
 )
 
@@ -74,8 +74,8 @@ type config struct {
 // config global config data
 var ConfigGlobal = &config{
 	LogLevel:          "INFO",
-	UpdateGithubOwner: "ao-data",
-	UpdateGithubRepo:  "albiondata-client"}
+	UpdateGithubOwner: "hbnis",
+	UpdateGithubRepo:  "habo-client"}
 
 func (config *config) SetupFlags() {
 	config.setupWebsocketFlags()
