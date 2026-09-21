@@ -1,8 +1,6 @@
 package client
 
 import (
-	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
