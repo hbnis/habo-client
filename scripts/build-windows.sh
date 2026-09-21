@@ -18,7 +18,7 @@ export PATH="$PATH:$(go env GOPATH)/bin"
 go-winres make
 
 (cd frontend && npm ci && npm run build)
-env GOOS=windows GOARCH=amd64 go build -ldflags "-s -w -X main.version=$GITHUB_REF_NAME" -o habo-client.exe albiondata-client.go
+env GOOS=windows GOARCH=amd64 go build -ldflags "-s -w -H windowsgui -X main.version=$GITHUB_REF_NAME" -o habo-client.exe albiondata-client.go
 
 go-winres patch habo-client.exe
 
