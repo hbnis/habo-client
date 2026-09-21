@@ -29,7 +29,42 @@ var (
 	// continuously, and far more sharply during network instability, when
 	// abandoned NATS connections would sit retrying with buffered data.
 	uploaderCache = map[string]uploader{}
+
+	uploadModeMu sync.RWMutex
+	uploadMode   = UploadModePublic
 )
+
+const (
+	UploadModePublic  = "public"
+	UploadModePrivate = "private"
+)
+
+func GetUploadMode() string {
+	uploadModeMu.RLock()
+	defer uploadModeMu.RUnlock()
+	return uploadMode
+}
+
+func PrivateUploadConfigured() bool {
+	return strings.TrimSpace(ConfigGlobal.PrivateIngestBaseUrls) != ""
+}
+
+func SetUploadMode(mode string) bool {
+	if mode != UploadModePublic && mode != UploadModePrivate {
+		return false
+	}
+	if mode == UploadModePrivate && !PrivateUploadConfigured() {
+		return false
+	}
+	uploadModeMu.Lock()
+	uploadMode = mode
+	uploadModeMu.Unlock()
+	return true
+}
+
+func isHaboMarketTopic(topic string) bool {
+	return topic == lib.NatsMarketOrdersIngest || topic == lib.NatsMarketHistoriesIngest
+}
 
 func createDispatcher() {
 	dis = &dispatcher{}
@@ -80,6 +115,12 @@ func createUploaders(targets []string) []uploader {
 }
 
 func sendMsgToPublicUploaders(upload interface{}, topic string, state *albionState, identifier string, recordCount int) {
+	// Habo Client is intentionally focused on market flipping. Keep the
+	// proven AODP decoder, but only forward market orders and market history.
+	if !isHaboMarketTopic(topic) {
+		return
+	}
+
 	dashboard.IncrementCounterBy(topic, int64(recordCount))
 
 	data, err := json.Marshal(upload)
@@ -88,20 +129,25 @@ func sendMsgToPublicUploaders(upload interface{}, topic string, state *albionSta
 		return
 	}
 
-	var PublicIngestBaseUrls = ConfigGlobal.PublicIngestBaseUrls
-	// http+pow://albion-online-data.com is used as a magic placeholder for every realm there is
-	if strings.Contains(ConfigGlobal.PublicIngestBaseUrls, "https+pow://albion-online-data.com") {
-		// we replace the placeholder with the correct one based on the serverID from albionState
-		PublicIngestBaseUrls = strings.Replace(PublicIngestBaseUrls, "https+pow://albion-online-data.com", state.AODataIngestBaseURL, -1)
+	switch GetUploadMode() {
+	case UploadModePrivate:
+		privateUploaders := createUploaders(strings.Split(ConfigGlobal.PrivateIngestBaseUrls, ","))
+		if len(privateUploaders) == 0 {
+			log.Warn("Private scan mode is selected but no Habo private ingest is configured.")
+			return
+		}
+		sendMsgToUploaders(data, topic, privateUploaders, state, identifier)
+
+	default:
+		publicIngestBaseUrls := ConfigGlobal.PublicIngestBaseUrls
+		// https+pow://albion-online-data.com is the AODP placeholder for every realm.
+		if strings.Contains(publicIngestBaseUrls, "https+pow://albion-online-data.com") {
+			publicIngestBaseUrls = strings.Replace(publicIngestBaseUrls, "https+pow://albion-online-data.com", state.AODataIngestBaseURL, -1)
+		}
+		publicUploaders := createUploaders(strings.Split(publicIngestBaseUrls, ","))
+		sendMsgToUploaders(data, topic, publicUploaders, state, identifier)
 	}
 
-	var publicUploaders = createUploaders(strings.Split(PublicIngestBaseUrls, ","))
-	var privateUploaders = createUploaders(strings.Split(ConfigGlobal.PrivateIngestBaseUrls, ","))
-
-	sendMsgToUploaders(data, topic, publicUploaders, state, identifier)
-	sendMsgToUploaders(data, topic, privateUploaders, state, identifier)
-
-	// If websockets are enabled, send the data there too
 	if ConfigGlobal.EnableWebsockets {
 		sendMsgToWebSockets(data, topic)
 	}
