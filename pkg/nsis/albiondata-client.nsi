@@ -1,4 +1,4 @@
-; This file is part of Albion Data Client
+; This file is part of Habo Client and is based on the Albion Data Client
 ; Copyright (c) 2017    The Albion Data Project
 ;
 ; See the LICENSE file in the root folder (MIT).
@@ -29,7 +29,7 @@ RequestExecutionLevel admin
 ;Versioninfo
 
 VIProductVersion "${PACKAGE_VERSION}.0"
-VIAddVersionKey "CompanyName"	"The Albion Data Project"
+VIAddVersionKey "CompanyName"	"The Habo Hub"
 VIAddVersionKey "FileDescription"	"${PACKAGE_NAME} Installer"
 VIAddVersionKey "FileVersion"		"${PACKAGE_VERSION}"
 VIAddVersionKey "InternalName"	"${PACKAGE_NAME}"
@@ -143,7 +143,7 @@ Section $(TEXT_SecBase) SecBase
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PACKAGE_NAME}" "DisplayName" "${PACKAGE_NAME}"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PACKAGE_NAME}" "DisplayVersion" "${PACKAGE_VERSION}"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PACKAGE_NAME}" "DisplayIcon" "$INSTDIR\${PACKAGE}.exe,0"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PACKAGE_NAME}" "Publisher" "The Albion Data Project"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PACKAGE_NAME}" "Publisher" "The Habo Hub"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PACKAGE_NAME}" "URLInfoAbout" "${PACKAGE_BUGREPORT}"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PACKAGE_NAME}" "InstallLocation" "$INSTDIR"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PACKAGE_NAME}" "UninstallString" "$INSTDIR\uninstall.exe"
@@ -165,7 +165,7 @@ Section $(TEXT_SecBase) SecBase
   CreateShortCut "$DESKTOP\${PACKAGE_NAME}.lnk" "$INSTDIR\${PACKAGE_EXE}"
 
 ; Create Task to run the Client as Admin on Logon
-  Exec 'c:\Windows\System32\schtasks.exe /Create /F /SC ONLOGON /RL HIGHEST /TN "Albion Data Client" /TR "\"$INSTDIR\albiondata-client.exe\" -minimize"'
+  Exec 'c:\Windows\System32\schtasks.exe /Create /F /SC ONLOGON /RL HIGHEST /TN "Habo Client" /TR "\"$INSTDIR\${PACKAGE_EXE}\" -minimize"'
 
 SectionEnd
 
@@ -249,7 +249,7 @@ Section "Uninstall"
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PACKAGE_NAME}"
 
 ; Task
-  Exec 'c:\Windows\System32\schtasks.exe /Delete /TN "Albion Data Client" /F'
+  Exec 'c:\Windows\System32\schtasks.exe /Delete /TN "Habo Client" /F'
 
 SectionEnd
 
