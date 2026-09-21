@@ -155,7 +155,7 @@ func applyHaboAccountState(state client.HaboAccountState) {
 	dashboard.SetUploadMode(client.GetUploadMode(), state.Connected)
 }
 
-func startHaboPairingFlow() {
+func startHaboPairingFlow(app *application.App) {
 	haboPairingMu.Lock()
 	if haboPairingActive {
 		haboPairingMu.Unlock()
@@ -174,6 +174,9 @@ func startHaboPairingFlow() {
 	applyHaboAccountState(state)
 	if state.Error != "" || state.Connected || !state.Pairing {
 		return
+	}
+	if state.ConnectURL != "" {
+		app.Event.Emit("habo:open-connect-url", state.ConnectURL)
 	}
 
 	deadline := time.Now().Add(10 * time.Minute)
@@ -297,7 +300,7 @@ func runDashboardApp() {
 	})
 
 	app.Event.On("habo:connect", func(e *application.CustomEvent) {
-		go startHaboPairingFlow()
+		go startHaboPairingFlow(app)
 	})
 	app.Event.On("habo:disconnect", func(e *application.CustomEvent) {
 		go applyHaboAccountState(client.DisconnectHaboAccount())
