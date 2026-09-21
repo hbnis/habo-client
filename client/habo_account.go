@@ -33,7 +33,10 @@ type HaboAccountState struct {
 }
 
 type haboPairStartResponse struct {
+	Connected        bool   `json:"connected"`
 	Pairing          bool   `json:"pairing"`
+	DisplayName      string `json:"displayName"`
+	PrivateIngestURL string `json:"privateIngestUrl"`
 	PairCode         string `json:"pairCode"`
 	ConnectURL       string `json:"connectUrl"`
 	ExpiresInSeconds int    `json:"expiresInSeconds"`
@@ -259,6 +262,14 @@ func StartHaboPairing() HaboAccountState {
 	var payload haboPairStartResponse
 	if json.NewDecoder(resp.Body).Decode(&payload) != nil {
 		return HaboAccountState{Error: "The Habo Hub returned an unreadable response."}
+	}
+	if resp.StatusCode == http.StatusOK && payload.Connected {
+		SetPrivateIngestBaseURLs("habo+" + strings.TrimRight(payload.PrivateIngestURL, "/"))
+		return HaboAccountState{
+			Connected:        true,
+			DisplayName:      payload.DisplayName,
+			PrivateIngestURL: payload.PrivateIngestURL,
+		}
 	}
 	if resp.StatusCode != http.StatusCreated {
 		if payload.Error == "" {
