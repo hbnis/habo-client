@@ -23,6 +23,12 @@ type Status struct {
 	EncryptionStatus string
 	UploadMode       string
 	PrivateReady     bool
+	HaboConnected    bool
+	HaboPairing      bool
+	HaboDisplayName  string
+	HaboPairCode     string
+	HaboConnectURL   string
+	HaboError        string
 }
 
 var (
@@ -198,6 +204,28 @@ func SetUploadMode(mode string, privateReady bool) {
 	next := status
 	next.UploadMode = mode
 	next.PrivateReady = privateReady
+	changed := next != status
+	if changed {
+		status = next
+	}
+	emit := statusEmit
+	statusMu.Unlock()
+
+	if changed && emit != nil {
+		emit(next)
+	}
+}
+
+// SetHaboAccount records the desktop client's Habo Hub connection state.
+func SetHaboAccount(connected, pairing bool, displayName, pairCode, connectURL, accountError string) {
+	statusMu.Lock()
+	next := status
+	next.HaboConnected = connected
+	next.HaboPairing = pairing
+	next.HaboDisplayName = displayName
+	next.HaboPairCode = pairCode
+	next.HaboConnectURL = connectURL
+	next.HaboError = accountError
 	changed := next != status
 	if changed {
 		status = next
