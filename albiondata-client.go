@@ -76,11 +76,12 @@ func main() {
 	}
 
 	if client.ConfigGlobal.PrintVersion {
-		log.Infof("Albion Data Client, version: %s", version)
+		log.Infof("Habo Client, version: %s", version)
 		return
 	}
 
 	log.AddHook(dashboard.NewLogHook())
+	dashboard.SetUploadMode(client.GetUploadMode(), client.PrivateUploadConfigured())
 
 	// Delayed rather than called inline here: this early in startup it'd
 	// print before Wails' own boot noise (Build Info/AssetServer Info/
@@ -141,8 +142,8 @@ func runClient() {
 
 func runDashboardApp() {
 	app := application.New(application.Options{
-		Name:        "Albion Data Client",
-		Description: "Live status dashboard for the Albion Data Client",
+		Name:        "Habo Client",
+		Description: "Albion Online market scanner for The Habo Hub",
 		Services: []application.Service{
 			application.NewService(&dashboard.DashboardService{}),
 		},
@@ -155,7 +156,7 @@ func runDashboardApp() {
 	})
 
 	winOpts := application.WebviewWindowOptions{
-		Title:  "Albion Data Client",
+		Title:  "Habo Client",
 		Name:   "dashboard",
 		Width:  900,
 		Height: 600,
@@ -234,6 +235,21 @@ func runDashboardApp() {
 		app.Event.Emit("log:line", l)
 	})
 
+	app.Event.On("habo:scan-mode", func(e *application.CustomEvent) {
+		mode, ok := e.Data.(string)
+		if !ok {
+			log.Warn("Ignoring invalid Habo scan mode event.")
+			return
+		}
+		if client.SetUploadMode(mode) {
+			dashboard.SetUploadMode(client.GetUploadMode(), client.PrivateUploadConfigured())
+			log.Infof("Habo scan mode changed to %s.", mode)
+		} else {
+			log.Warnf("Unable to switch Habo scan mode to %s.", mode)
+			app.Event.Emit("status:changed", dashboard.GetStatus())
+		}
+	})
+
 	setupTray(app, dashboardWindow)
 
 	// Open and focus the dashboard automatically at launch. Registered as
@@ -273,7 +289,7 @@ func runDashboardApp() {
 
 func setupTray(app *application.App, dashboardWindow *application.WebviewWindow) {
 	tray := app.SystemTray.New()
-	tray.SetTooltip("Albion Data Client")
+	tray.SetTooltip("Habo Client")
 
 	// icon.TrayPNG is a full-color logo with an opaque background, not a
 	// monochrome silhouette, so it must be set as a regular icon rather
@@ -320,7 +336,7 @@ func setupTray(app *application.App, dashboardWindow *application.WebviewWindow)
 	})
 
 	menu := app.NewMenu()
-	menu.Add("Open Dashboard").OnClick(func(ctx *application.Context) {
+	menu.Add("Open Habo Client").OnClick(func(ctx *application.Context) {
 		// Show() alone doesn't activate the app on macOS (see
 		// showDashboardWindow's comment); Focus() does, so the window
 		// actually comes to the front instead of staying hidden behind
