@@ -124,15 +124,29 @@ export class Status {
              */
             this["DriverHelpURL"] = "";
         }
-        if (!("EncryptionStatus" in $$source)) {
+        if (!("EncryptionStatus" in $source)) {
             /**
              * @member
              * @type {string}
              */
             this["EncryptionStatus"] = "";
         }
+        if (!("UploadMode" in $source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["UploadMode"] = "public";
+        }
+        if (!("PrivateReady" in $source)) {
+            /**
+             * @member
+             * @type {boolean}
+             */
+            this["PrivateReady"] = false;
+        }
 
-        Object.assign(this, $$source);
+        Object.assign(this, $source);
     }
 
     /**
