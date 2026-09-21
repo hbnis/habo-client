@@ -21,6 +21,8 @@ type Status struct {
 	// decoded normally). See client/albion_state.go's
 	// ShouldNotifyMarketDataEncrypted for how "encrypted" is decided.
 	EncryptionStatus string
+	UploadMode       string
+	PrivateReady     bool
 }
 
 var (
@@ -177,6 +179,25 @@ func SetEncryptionStatus(encryptionStatus string) {
 	statusMu.Lock()
 	next := status
 	next.EncryptionStatus = encryptionStatus
+	changed := next != status
+	if changed {
+		status = next
+	}
+	emit := statusEmit
+	statusMu.Unlock()
+
+	if changed && emit != nil {
+		emit(next)
+	}
+}
+
+// SetUploadMode records the active scan privacy mode and whether a private
+// Habo ingest target is available.
+func SetUploadMode(mode string, privateReady bool) {
+	statusMu.Lock()
+	next := status
+	next.UploadMode = mode
+	next.PrivateReady = privateReady
 	changed := next != status
 	if changed {
 		status = next
