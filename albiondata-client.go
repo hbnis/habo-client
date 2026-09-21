@@ -33,6 +33,8 @@ var version string
 var (
 	dashboardWindowMu  sync.Mutex
 	dashboardWindowRef *application.WebviewWindow
+	haboPairingMu      sync.Mutex
+	haboPairingActive  bool
 )
 
 // showDashboardWindow shows the dashboard window if it has been created
@@ -81,7 +83,8 @@ func main() {
 	}
 
 	log.AddHook(dashboard.NewLogHook())
-	dashboard.SetUploadMode(client.GetUploadMode(), client.PrivateUploadConfigured())
+	dashboard.SetUploadMode(client.GetUploadMode(), false)
+	go applyHaboAccountState(client.RefreshHaboAccount())
 
 	// Delayed rather than called inline here: this early in startup it'd
 	// print before Wails' own boot noise (Build Info/AssetServer Info/
@@ -138,6 +141,64 @@ func runClient() {
 		dashboard.SetCaptureError(true)
 		showDashboardWindow()
 	}
+}
+
+func applyHaboAccountState(state client.HaboAccountState) {
+	dashboard.SetHaboAccount(
+		state.Connected,
+		state.Pairing,
+		state.DisplayName,
+		state.PairCode,
+		state.ConnectURL,
+		state.Error,
+	)
+	dashboard.SetUploadMode(client.GetUploadMode(), state.Connected)
+}
+
+func startHaboPairingFlow() {
+	haboPairingMu.Lock()
+	if haboPairingActive {
+		haboPairingMu.Unlock()
+		return
+	}
+	haboPairingActive = true
+	haboPairingMu.Unlock()
+
+	defer func() {
+		haboPairingMu.Lock()
+		haboPairingActive = false
+		haboPairingMu.Unlock()
+	}()
+
+	state := client.StartHaboPairing()
+	applyHaboAccountState(state)
+	if state.Error != "" || state.Connected || !state.Pairing {
+		return
+	}
+
+	deadline := time.Now().Add(10 * time.Minute)
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	for time.Now().Before(deadline) {
+		<-ticker.C
+		next := client.RefreshHaboAccount()
+		if next.Connected {
+			applyHaboAccountState(next)
+			return
+		}
+		if next.Error != "" {
+			log.Warnf("Habo Hub pairing check: %s", next.Error)
+			continue
+		}
+		if !next.Pairing {
+			applyHaboAccountState(next)
+			return
+		}
+	}
+
+	dashboard.SetHaboAccount(false, false, "", "", "", "Pairing expired. Start the connection again.")
+	dashboard.SetUploadMode(client.GetUploadMode(), false)
 }
 
 func runDashboardApp() {
@@ -233,6 +294,16 @@ func runDashboardApp() {
 	})
 	dashboard.OnLogLine(func(l dashboard.LogLine) {
 		app.Event.Emit("log:line", l)
+	})
+
+	app.Event.On("habo:connect", func(e *application.CustomEvent) {
+		go startHaboPairingFlow()
+	})
+	app.Event.On("habo:disconnect", func(e *application.CustomEvent) {
+		go applyHaboAccountState(client.DisconnectHaboAccount())
+	})
+	app.Event.On("habo:refresh-account", func(e *application.CustomEvent) {
+		go applyHaboAccountState(client.RefreshHaboAccount())
 	})
 
 	app.Event.On("habo:scan-mode", func(e *application.CustomEvent) {
