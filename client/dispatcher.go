@@ -45,8 +45,22 @@ func GetUploadMode() string {
 	return uploadMode
 }
 
+var privateIngestMu sync.RWMutex
+
+func getPrivateIngestBaseURLs() string {
+	privateIngestMu.RLock()
+	defer privateIngestMu.RUnlock()
+	return ConfigGlobal.PrivateIngestBaseUrls
+}
+
+func SetPrivateIngestBaseURLs(value string) {
+	privateIngestMu.Lock()
+	ConfigGlobal.PrivateIngestBaseUrls = value
+	privateIngestMu.Unlock()
+}
+
 func PrivateUploadConfigured() bool {
-	return strings.TrimSpace(ConfigGlobal.PrivateIngestBaseUrls) != ""
+	return strings.TrimSpace(getPrivateIngestBaseURLs()) != ""
 }
 
 func SetUploadMode(mode string) bool {
@@ -96,13 +110,16 @@ func createUploaders(targets []string) []uploader {
 		}
 
 		var u uploader
-		if target[0:8] == "http+pow" || target[0:9] == "https+pow" {
+		switch {
+		case strings.HasPrefix(target, "habo+https://") || strings.HasPrefix(target, "habo+http://"):
+			u = newHaboUploader(target)
+		case strings.HasPrefix(target, "http+pow://") || strings.HasPrefix(target, "https+pow://"):
 			u = newHTTPUploaderPow(target)
-		} else if target[0:4] == "http" || target[0:5] == "https" {
+		case strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://"):
 			u = newHTTPUploader(target)
-		} else if target[0:4] == "nats" {
+		case strings.HasPrefix(target, "nats://"):
 			u = newNATSUploader(target)
-		} else {
+		default:
 			log.Infof("An invalid ingest target was specified: %v", target)
 			continue
 		}
@@ -131,7 +148,7 @@ func sendMsgToPublicUploaders(upload interface{}, topic string, state *albionSta
 
 	switch GetUploadMode() {
 	case UploadModePrivate:
-		privateUploaders := createUploaders(strings.Split(ConfigGlobal.PrivateIngestBaseUrls, ","))
+		privateUploaders := createUploaders(strings.Split(getPrivateIngestBaseURLs(), ","))
 		if len(privateUploaders) == 0 {
 			log.Warn("Private scan mode is selected but no Habo private ingest is configured.")
 			return
@@ -178,7 +195,7 @@ func sendMsgToPrivateUploaders(upload lib.PersonalizedUpload, topic string, stat
 		return
 	}
 
-	var privateUploaders = createUploaders(strings.Split(ConfigGlobal.PrivateIngestBaseUrls, ","))
+	var privateUploaders = createUploaders(strings.Split(getPrivateIngestBaseURLs(), ","))
 	if len(privateUploaders) > 0 {
 		sendMsgToUploaders(data, topic, privateUploaders, state, identifier)
 	}
