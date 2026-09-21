@@ -4,8 +4,8 @@ set -eo pipefail
 
 rm -f rsrc_windows_*
 rm -f habo-client.exe
-rm -f albiondata-client.*.bak
-rm -f .albiondata-client.*.old
+rm -f habo-client.*.bak
+rm -f .habo-client.*.old
 
 rm -f habo-client-amd64-installer.exe
 
@@ -26,7 +26,7 @@ cd pkg/nsis
 make nsis
 
 cd ../..
-ls -la albiondata-client*
+ls -la habo-client* update-windows-amd64.exe.gz
 
 cp habo-client.exe habo-client.exe.copy
 gzip -9 habo-client.exe
