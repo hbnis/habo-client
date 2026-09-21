@@ -24,9 +24,9 @@ jobs:
           - os: windows
             runner: ubuntu-latest
             artifacts: |
-              albiondata-client.exe
+              habo-client.exe
               update-windows-amd64.exe.gz
-              albiondata-client-amd64-installer.exe
+              habo-client-amd64-installer.exe
           - os: darwin
             runner: macos-latest
             artifacts: |
