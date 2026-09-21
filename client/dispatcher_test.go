@@ -1,7 +1,10 @@
 package client
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/ao-data/albiondata-client/internal/dashboard"
 	"github.com/ao-data/albiondata-client/lib"
@@ -40,5 +43,64 @@ func TestSendMsgToPublicUploaders_IncrementsCounterByRecordCount(t *testing.T) {
 	after := dashboard.GetUploadCounts()["marketorders.ingest"]
 	if after != before+50 {
 		t.Fatalf("marketorders.ingest counter = %d, want %d", after, before+50)
+	}
+}
+
+
+func TestPrivateModeDoesNotSendMarketDataToPublicAODP(t *testing.T) {
+	publicRequests := make(chan struct{}, 1)
+	privateRequests := make(chan struct{}, 1)
+
+	publicServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		publicRequests <- struct{}{}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer publicServer.Close()
+
+	privateServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		privateRequests <- struct{}{}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer privateServer.Close()
+
+	oldPublic := ConfigGlobal.PublicIngestBaseUrls
+	oldPrivate := getPrivateIngestBaseURLs()
+	oldDisable := ConfigGlobal.DisableUpload
+	oldMode := GetUploadMode()
+	t.Cleanup(func() {
+		ConfigGlobal.PublicIngestBaseUrls = oldPublic
+		SetPrivateIngestBaseURLs(oldPrivate)
+		ConfigGlobal.DisableUpload = oldDisable
+		SetUploadMode(UploadModePublic)
+		if oldMode == UploadModePrivate && oldPrivate != "" {
+			SetUploadMode(UploadModePrivate)
+		}
+	})
+
+	ConfigGlobal.DisableUpload = false
+	ConfigGlobal.PublicIngestBaseUrls = publicServer.URL
+	SetPrivateIngestBaseURLs(privateServer.URL)
+	if !SetUploadMode(UploadModePrivate) {
+		t.Fatal("private mode should enable with a configured private target")
+	}
+
+	sendMsgToPublicUploaders(
+		lib.MarketUpload{Orders: []*lib.MarketOrder{{ID: 1, ItemID: "T4_BOW", LocationID: "1", QualityLevel: 1, Price: 100, Amount: 1, AuctionType: "offer"}}},
+		lib.NatsMarketOrdersIngest,
+		&albionState{AODataServerID: 3},
+		"private-routing-test",
+		1,
+	)
+
+	select {
+	case <-privateRequests:
+	case <-time.After(time.Second):
+		t.Fatal("private market data was not sent to the private target")
+	}
+
+	select {
+	case <-publicRequests:
+		t.Fatal("private mode leaked market data to the public AODP target")
+	case <-time.After(100 * time.Millisecond):
 	}
 }
