@@ -26,7 +26,7 @@ cd pkg/nsis
 make nsis
 
 cd ../..
-ls -la habo-client* update-windows-amd64.exe.gz
+ls -la habo-client*
 
 cp habo-client.exe habo-client.exe.copy
 gzip -9 habo-client.exe
