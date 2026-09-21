@@ -3,30 +3,25 @@
   import { Events } from '@wailsio/runtime';
   import { DashboardService } from '../../bindings/github.com/ao-data/albiondata-client/internal/dashboard/index.js';
 
-  const labels = {
-    'marketorders.ingest': 'Market Orders',
-    'goldprices.ingest': 'Gold Prices',
-    'markethistories.ingest': 'Market Histories',
-    'festivities.ingest': 'Festivities',
-    'banditevent.ingest': 'Bandit Events',
-  };
-
   let counts = $state({});
-
-  DashboardService.GetUploadCounts().then((c) => (counts = c));
-
-  const unlisten = Events.On('counters:snapshot', (evt) => {
-    counts = evt.data;
+  DashboardService.GetUploadCounts().then((value) => (counts = value));
+  const stop = Events.On('counters:snapshot', (event) => {
+    counts = event.data;
   });
+  onDestroy(stop);
 
-  onDestroy(unlisten);
+  const labels = [
+    ['marketorders.ingest', 'Market orders'],
+    ['markethistories.ingest', 'History rows'],
+  ];
 </script>
 
 <section class="counters">
-  {#each Object.entries(labels) as [topic, label]}
+  <span class="heading">THIS SESSION</span>
+  {#each labels as [topic, label]}
     <div class="counter">
-      <span class="label">{label}</span>
-      <span class="value">{counts[topic] ?? 0}</span>
+      <span>{label}</span>
+      <b>{(counts[topic] ?? 0).toLocaleString()}</b>
     </div>
   {/each}
 </section>
@@ -35,9 +30,17 @@
   .counters {
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
-    padding-top: 1.15rem;
-    border-top: 1px solid var(--border);
+    gap: 0.65rem;
+    padding: 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-raised);
+  }
+  .heading {
+    color: var(--text-faint);
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
   }
   .counter {
     display: flex;
@@ -45,22 +48,14 @@
     justify-content: space-between;
     gap: 0.75rem;
   }
-  .label {
-    font-size: 0.66rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: var(--text-faint);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .counter span {
+    color: var(--text-muted);
+    font-size: 0.74rem;
   }
-  .value {
+  .counter b {
+    color: var(--orange-bright);
     font-family: var(--font-mono);
     font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--blue-bright);
     font-variant-numeric: tabular-nums;
-    flex-shrink: 0;
   }
 </style>
