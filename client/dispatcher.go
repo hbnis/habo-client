@@ -154,6 +154,9 @@ func sendMsgToPublicUploaders(upload interface{}, topic string, state *albionSta
 }
 
 func sendMsgToPrivateUploaders(upload lib.PersonalizedUpload, topic string, state *albionState, identifier string) {
+	if !isHaboMarketTopic(topic) {
+		return
+	}
 	if ConfigGlobal.DisableUpload {
 		log.Info("Upload is disabled.")
 		return
