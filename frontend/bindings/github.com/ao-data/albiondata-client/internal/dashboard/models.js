@@ -145,6 +145,12 @@ export class Status {
              */
             this["PrivateReady"] = false;
         }
+        if (!("HaboConnected" in $source)) this["HaboConnected"] = false;
+        if (!("HaboPairing" in $source)) this["HaboPairing"] = false;
+        if (!("HaboDisplayName" in $source)) this["HaboDisplayName"] = "";
+        if (!("HaboPairCode" in $source)) this["HaboPairCode"] = "";
+        if (!("HaboConnectURL" in $source)) this["HaboConnectURL"] = "";
+        if (!("HaboError" in $source)) this["HaboError"] = "";
 
         Object.assign(this, $source);
     }
