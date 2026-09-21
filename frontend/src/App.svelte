@@ -86,6 +86,7 @@
     cursor: pointer;
   }
   .log-wrap {
+    display: flex;
     height: 220px;
     border-top: 1px solid var(--border);
   }
