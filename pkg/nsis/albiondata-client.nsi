@@ -96,6 +96,12 @@ Function .onInit
 
   !insertmacro MUI_LANGDLL_DISPLAY
 
+  ; Close any older Habo Client process before replacing the executable.
+  ; Closing the dashboard window only hides the app, so upgrades can
+  ; otherwise leave the previous build running in the tray.
+  nsExec::ExecToLog 'taskkill /F /IM habo-client.exe'
+  Sleep 500
+
   ; Npcap cannot be bundled with this installer: redistribution requires a
   ; paid OEM license (npcap.com/oem), unlike the old WinPCAP driver this
   ; installer used to bundle directly. The Nmap Project's own guidance for
