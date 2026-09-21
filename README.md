@@ -1,112 +1,53 @@
-<!-- [![CircleCI](https://circleci.com/gh/broderickhyman/albiondata-client/tree/master.svg?style=svg)](https://circleci.com/gh/broderickhyman/albiondata-client/tree/master) [![Go Report Card](https://goreportcard.com/badge/github.com/broderickhyman/albiondata-client)](https://goreportcard.com/report/github.com/broderickhyman/albiondata-client)
--->
+# Habo Client
 
-# Albion Data - Client
-Distributed client for the [Albion Online Data](https://www.albion-online-data.com/)
-project.
+Habo Client is a lightweight Albion Online market scanner for [The Habo Hub](https://habonis.com).
 
-A quick note on the legality of this application and if it
-violates the Terms and Conditions for Albion Online. Here is
-the response from SBI when asked if we are allowed to do
-monitor network packets relating to Albion Online:
-> Our position is quite simple. As long as you just look and
-analyze we are ok with it. The moment you modify or manipulate
-something or somehow interfere with our services we will react
-(e.g. perma-ban, take legal action, whatever).
+The goal is intentionally narrow: help players scan marketplace data for flipping tools without adding gameplay automation or unrelated features.
 
-~ MadDave - Technical Lead for Albion Online
+## What it does
 
-Source: https://forum.albiononline.com/index.php/Thread/51604-Is-it-allowed-to-scan-your-internet-trafic-and-pick-up-logs/?postID=512670#post512670
+- Watches Albion Online network traffic using the proven Albion Online Data Project capture/parser foundation.
+- Reads market orders and market history that the player manually loads in game.
+- Shows scanner status, detected server and session counters in a Habo-branded desktop UI.
+- Public mode contributes scanned market data to the Albion Online Data Project.
+- Private mode routing is built into the client and becomes available when a Habo private ingest/account connection is configured.
+- Only market orders and market history are forwarded by the Habo build.
 
-This client monitors local network traffic, identifies UDP packets
-that contain relevant data for Albion Online, and ships the information
-off to a central NATS server that anyone can subscribe to.
+Habo Client does not click, search, buy, sell, inject into the game or automate gameplay.
 
-<!--
-[Client download stats](https://www.somsubhra.com/github-release-stats/?username=broderickhyman&repository=albiondata-client)
--->
+## Current development status
 
-<!-- 
-### Contributing
-This process is run on a [DigitalOcean Droplet](https://www.digitalocean.com) in order to ensure almost perfect uptime and high performance for the users. If you find this project beneficial to you then please consider a donation, thanks!!
+The desktop shell, market-only routing, Public/Private scan-mode foundation and Windows Habo Client packaging are in progress.
 
--->
+The next major piece is Habo Hub account pairing and authenticated private ingest so Private mode can associate scans with the signed-in Habo Hub account.
 
-# Contributions
-Many thanks to the original developers:
-- [Regner](https://github.com/Regner)
-- [pcdummy](https://github.com/pcdummy)
-- [Ultraporing](https://github.com/Ultraporing)
+## Albion Online Data Project foundation
 
+This project is forked from [ao-data/albiondata-client](https://github.com/ao-data/albiondata-client) and keeps its packet capture and Albion protocol parsing foundation.
 
-Many thanks also to [broderickhyman](https://github.com/broderickhyman) for picking up development and funding for the the last few years of the project!
+The upstream project is licensed under the MIT License. The original copyright notice and MIT license are preserved in this repository.
 
-As of 2023-01-01, [Stanx](https://github.com/phendryx) is the primary maintainer and provides funding of the related projects.  
+Upstream developers and maintainers include the Albion Online Data Project contributors, Regner, pcdummy, Ultraporing, broderickhyman, Stanx/phendryx, Walkynn and others listed in the upstream project history.
 
-[Walkynn](https://github.com/walkeralencar) has been a long time maintainer of different aspets of the project as well.
+## Windows development
 
-# Downloads
-Downloads can be found here: https://github.com/ao-data/albiondata-client/releases
+Windows packet capture requires [Npcap](https://npcap.com/#download) installed in WinPcap API-compatible mode.
 
-Stats for the client releases can be viewed [here](https://tooomm.github.io/github-release-stats/?username=ao-data&repository=albiondata-client).
-## Running on Mac
+The app uses Go, Wails v3, Svelte and Vite.
 
-### Running from the Finder
-1. Download the latest `albiondata-client-amd64-mac.zip` file from [the Releases page](https://github.com/ao-data/albiondata-client/releases)
-2. Unzip that file from the Finder
-3. Enter the `albiondata-client` folder.
-4. Double click the `run.command` file. It will ask for your password for permissions reasons.
-
-### Running from the Terminal
-1. Download the latest `update-darwin-amd64.gz` file from [the Releases page](https://github.com/ao-data/albiondata-client/releases)
-2. Unzip that file from the Finder or with `gunzip update-darwin-amd64.gz`
-3. The unzipped `albiondata-client` file is a Golang binary file. You'll need to make this file executable so it can be run directly. You can do this from your Terminal with: `chmod +x albiondata-client`
-4. Run the client from your Terminal with `./albiondata-client`
-
-## Running on Debian or Debian based distros
-
-### Install app binary
-<sup>`~/.local/bin` requires systemd. If you don't roll with systemd use something else. </sup>
-
-1. Create ~/.local/bin folder: `mkdir -p ~/.local/bin`
-2. Download latest `update-linux-amd64.gz` version from [the Releases page](https://github.com/ao-data/albiondata-client/releases)  
-`curl -L https://github.com/ao-data/albiondata-client/releases/latest/download/update-linux-amd64.gz -o - | gzip -d > ~/.local/bin/albiondata-client`
-3. Give user execution permission: `chmod u+x ~/.local/bin/albiondata-client`
-
-### Install dependency libpcap
+Basic build flow:
 
 ```bash
-sudo apt install libpcap-dev
+make frontend
+make build-windows
 ```
 
-### Give binary permission to capture network traffic
+## Disclaimer
 
-To allow binary to capture data without using sudo
+Habo Client is an independent third-party fan project. It is not affiliated with or endorsed by Sandbox Interactive or Albion Online.
 
-```bash
-sudo setcap cap_net_raw,cap_net_admin=eip ~/.local/bin/albiondata-client
-```
+Before a public release, current Albion Online rules and third-party software guidance should be reviewed again because those rules can change.
 
-# Related Projects
-- [albiondata-deduper-dotNet](https://github.com/ao-data/albiondata-deduper-dotNet)
-- [albiondata-sql-dotNet](https://github.com/ao-data/albiondata-sql-dotNet)
-- [albiondata-api-dotNet](https://github.com/ao-data/albiondata-api-dotNet)
-- [AlbionData.Models](https://github.com/ao-data/albiondata-models-dotNet) [![NuGet](https://img.shields.io/nuget/v/AlbionData.Models.svg)](https://www.nuget.org/packages/AlbionData.Models/)
-- [albion-data-website](https://github.com/ao-data/albion-data-website)
+## License
 
-# Contact Us
-The best way to get in touch with us is on the Albion Online Fansites Discord server in either the #proj-albiondata or the #developers channel. A permanent invite link can be found here: [https://discord.gg/TjWdq24](https://discord.gg/TjWdq24)
-
-# Developer Setup
-### Mac/Linux Setup
-- Install go
-- Build the project (Go modules will download automatically)
-
-### Windows Setup
-Requires [Npcap](https://npcap.com/#download) installed in "WinPcap API-compatible Mode" (the installer no longer bundles a capture driver — see licensing notes in `pkg/nsis/albiondata-client.nsi`).
-
-[Windows Setup Guide](https://github.com/ao-data/albiondata-client/wiki/Building-in-Windows)
-
-# License
-This project, and all contributed code, are licensed under the MIT
-License. A copy of the MIT License may be found in the repository.
+See [LICENSE](LICENSE). The AODP foundation and modifications in this repository remain subject to the included MIT License.
