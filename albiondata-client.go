@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"regexp"
 	"runtime"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
