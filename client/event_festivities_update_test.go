@@ -93,67 +93,37 @@ func TestFestivitiesUpdateRejectsInvalidPayload(t *testing.T) {
 	}
 }
 
-func TestFestivitiesUpdateSendsToPublicIngest(t *testing.T) {
-	requests := make(chan lib.FestivitiesUpload, 2)
+func TestFestivitiesUpdateIsNotForwardedByHaboClient(t *testing.T) {
+	requests := make(chan struct{}, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		if request.Method != http.MethodPost {
-			t.Errorf("unexpected method: %s", request.Method)
-		}
-		if request.URL.Path != "/"+lib.NatsFestivitiesIngest {
-			t.Errorf("unexpected path: %s", request.URL.Path)
-		}
-
-		body, err := io.ReadAll(request.Body)
-		if err != nil {
-			t.Error(err)
-			response.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		var upload lib.FestivitiesUpload
-		if err := json.Unmarshal(body, &upload); err != nil {
-			t.Error(err)
-			response.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		requests <- upload
+		requests <- struct{}{}
 		response.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
 
 	oldDisableUpload := ConfigGlobal.DisableUpload
 	oldPublicIngestBaseUrls := ConfigGlobal.PublicIngestBaseUrls
-	oldPrivateIngestBaseUrls := ConfigGlobal.PrivateIngestBaseUrls
+	oldPrivateIngestBaseUrls := getPrivateIngestBaseURLs()
 	oldEnableWebsockets := ConfigGlobal.EnableWebsockets
 	t.Cleanup(func() {
 		ConfigGlobal.DisableUpload = oldDisableUpload
 		ConfigGlobal.PublicIngestBaseUrls = oldPublicIngestBaseUrls
-		ConfigGlobal.PrivateIngestBaseUrls = oldPrivateIngestBaseUrls
+		SetPrivateIngestBaseURLs(oldPrivateIngestBaseUrls)
 		ConfigGlobal.EnableWebsockets = oldEnableWebsockets
 	})
 
 	ConfigGlobal.DisableUpload = false
 	ConfigGlobal.PublicIngestBaseUrls = server.URL
-	ConfigGlobal.PrivateIngestBaseUrls = ""
+	SetPrivateIngestBaseURLs("")
 	ConfigGlobal.EnableWebsockets = false
 
 	state := &albionState{AODataServerID: 3}
 	event := testFestivitiesUpdate()
 	event.Process(state)
-	event.Process(state)
-
-	select {
-	case upload := <-requests:
-		if len(upload.Events) != 2 {
-			t.Fatalf("unexpected event count: %d", len(upload.Events))
-		}
-	case <-time.After(time.Second):
-		t.Fatal("timed out waiting for festivities upload")
-	}
 
 	select {
 	case <-requests:
-		t.Fatal("duplicate festivities upload was not throttled")
-	case <-time.After(50 * time.Millisecond):
+		t.Fatal("Habo Client forwarded festivities data; only market data should be uploaded")
+	case <-time.After(100 * time.Millisecond):
 	}
 }
