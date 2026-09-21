@@ -27,7 +27,13 @@
   const stopStatus = Events.On('status:changed', (event) => {
     status = event.data;
   });
-  onDestroy(stopStatus);
+  const stopOpenConnect = Events.On('habo:open-connect-url', (event) => {
+    if (typeof event.data === 'string' && event.data) Browser.OpenURL(event.data);
+  });
+  onDestroy(() => {
+    stopStatus();
+    stopOpenConnect();
+  });
 
   const serverNames = { 0: 'Waiting for Albion', 1: 'Americas', 2: 'Asia', 3: 'Europe' };
   let serverLabel = $derived(serverNames[status.ServerID] ?? 'Unknown');
