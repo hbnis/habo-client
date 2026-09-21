@@ -222,6 +222,9 @@ func StartHaboPairing() HaboAccountState {
 		if state.Connected {
 			return state
 		}
+		// Refresh may clear a revoked or expired token. Reload before deciding
+		// whether the existing token can safely be reused for a new pairing.
+		token = loadHaboToken()
 	}
 	if token == "" {
 		var err error
