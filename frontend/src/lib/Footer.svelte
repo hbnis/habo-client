@@ -4,31 +4,25 @@
   import { DashboardService } from '../../bindings/github.com/ao-data/albiondata-client/internal/dashboard/index.js';
 
   let version = $state('');
-
-  DashboardService.GetStatus().then((s) => (version = s.Version));
-
-  const unlisten = Events.On('status:changed', (evt) => {
-    version = evt.data.Version;
+  DashboardService.GetStatus().then((value) => (version = value.Version));
+  const stop = Events.On('status:changed', (event) => {
+    version = event.data.Version;
   });
+  onDestroy(stop);
 
-  onDestroy(unlisten);
-
-  function openLink(e, url) {
-    e.preventDefault();
+  function open(event, url) {
+    event.preventDefault();
     Browser.OpenURL(url);
   }
 </script>
 
 <footer class="footer">
-  <nav class="links">
-    <a href="https://www.albion-online-data.com" onclick={(e) => openLink(e, 'https://www.albion-online-data.com')}>
-      albion-online-data.com
-    </a>
-    <a href="https://discord.gg/yv5SgytAjX" onclick={(e) => openLink(e, 'https://discord.gg/yv5SgytAjX')}>
-      Discord
-    </a>
-  </nav>
-  <span class="version">v{version || 'dev'}</span>
+  <div class="links">
+    <a href="https://habonis.com" onclick={(event) => open(event, 'https://habonis.com')}>habonis.com</a>
+    <a href="https://discord.gg/habo" onclick={(event) => open(event, 'https://discord.gg/habo')}>Discord</a>
+    <a href="https://github.com/ao-data/albiondata-client" onclick={(event) => open(event, 'https://github.com/ao-data/albiondata-client')}>AODP foundation</a>
+  </div>
+  <span>Habo Client v{version || 'dev'}</span>
 </footer>
 
 <style>
@@ -37,26 +31,23 @@
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    padding: 0.5rem 1.25rem;
-    background: var(--bg-raised);
+    flex: none;
+    padding: 0.55rem 1.1rem;
     border-top: 1px solid var(--border);
-    flex-shrink: 0;
+    background: #0d1319;
   }
   .links {
     display: flex;
-    gap: 1.25rem;
+    flex-wrap: wrap;
+    gap: 1rem;
   }
-  .links a {
-    font-size: 0.75rem;
-    color: var(--text-muted);
+  a, .footer > span {
+    color: var(--text-faint);
+    font-size: 0.68rem;
     text-decoration: none;
   }
-  .links a:hover {
-    color: var(--blue);
-  }
-  .version {
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    color: var(--text-faint);
+  a:hover { color: var(--orange-bright); }
+  @media (max-width: 620px) {
+    .footer { align-items: flex-start; flex-direction: column; }
   }
 </style>
