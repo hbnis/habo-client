@@ -4,339 +4,282 @@
   import { DashboardService } from '../../bindings/github.com/ao-data/albiondata-client/internal/dashboard/index.js';
   import CountersPanel from './CountersPanel.svelte';
 
-  const WIDTH_KEY = 'sidebar-width';
-  const MIN_WIDTH = 168;
-  const MAX_WIDTH = 360;
-  const DEFAULT_WIDTH = 208;
-
-  function loadWidth() {
-    const stored = Number(localStorage.getItem(WIDTH_KEY));
-    if (Number.isFinite(stored) && stored >= MIN_WIDTH && stored <= MAX_WIDTH) return stored;
-    return DEFAULT_WIDTH;
-  }
-
-  let width = $state(loadWidth());
-  let resizing = $state(false);
-
-  function startResize(e) {
-    e.preventDefault();
-    resizing = true;
-    window.addEventListener('pointermove', onResize);
-    window.addEventListener('pointerup', stopResize);
-  }
-
-  function onResize(e) {
-    width = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, e.clientX));
-  }
-
-  function stopResize() {
-    resizing = false;
-    localStorage.setItem(WIDTH_KEY, String(width));
-    window.removeEventListener('pointermove', onResize);
-    window.removeEventListener('pointerup', stopResize);
-  }
-
-  onDestroy(() => {
-    window.removeEventListener('pointermove', onResize);
-    window.removeEventListener('pointerup', stopResize);
-  });
-
   let status = $state({
     Version: '',
     UpdateAvailable: '',
     CaptureRunning: false,
     CaptureError: false,
     ServerID: 0,
-    IngestBaseURL: '',
-    CustomPublicIngest: false,
     DriverWarning: '',
     DriverHelpURL: '',
     EncryptionStatus: '',
+    UploadMode: 'public',
+    PrivateReady: false,
   });
 
-  DashboardService.GetStatus().then((s) => (status = s));
-
-  const unlisten = Events.On('status:changed', (evt) => {
-    status = evt.data;
+  DashboardService.GetStatus().then((value) => (status = value));
+  const stopStatus = Events.On('status:changed', (event) => {
+    status = event.data;
   });
+  onDestroy(stopStatus);
 
-  onDestroy(unlisten);
-
-  const serverNames = { 0: 'Unknown', 1: 'West', 2: 'East', 3: 'Europe' };
-  let serverLabel = $derived(
-    status.CustomPublicIngest ? 'Private' : (serverNames[status.ServerID] ?? status.ServerID)
-  );
-  let badgeLabel = $derived(
-    status.CaptureError ? 'Error' : status.CaptureRunning ? 'Capturing' : 'Ready'
-  );
-  let encryptionLabel = $derived(
-    status.EncryptionStatus === 'encrypted'
-      ? 'Encrypted'
-      : status.EncryptionStatus === 'clear'
-        ? 'Not Encrypted'
-        : 'Encrypted?'
+  const serverNames = { 0: 'Waiting for Albion', 1: 'Americas', 2: 'Asia', 3: 'Europe' };
+  let serverLabel = $derived(serverNames[status.ServerID] ?? 'Unknown');
+  let captureLabel = $derived(
+    status.CaptureError ? 'Capture error' : status.CaptureRunning ? 'Scanner running' : 'Waiting for Albion'
   );
 
-  function openDriverHelp(e) {
-    e.preventDefault();
+  async function setMode(mode) {
+    if (mode === 'private' && !status.PrivateReady) return;
+    await Events.Emit('habo:scan-mode', mode);
+  }
+
+  function openDriverHelp(event) {
+    event.preventDefault();
     Browser.OpenURL(status.DriverHelpURL);
+  }
+
+  function openHub() {
+    Browser.OpenURL('https://habonis.com');
   }
 </script>
 
-<aside class="sidebar" style="width: {width}px">
-  <div
-    class="resize-handle"
-    class:active={resizing}
-    onpointerdown={startResize}
-    role="separator"
-    aria-orientation="vertical"
-    aria-label="Resize sidebar"
-  ></div>
+<aside class="sidebar">
   <div class="brand">
-    <span class="wordmark">Albion Data Client</span>
-  </div>
-
-  <div class="group">
-    <div class="pill-row">
-      <span
-        class="status-pill"
-        class:running={status.CaptureRunning && !status.CaptureError}
-        class:error={status.CaptureError}
-      >
-        <span class="lantern"><span class="glow"></span></span>
-        {badgeLabel}
-      </span>
-
-      <span
-        class="status-pill"
-        class:encrypted={status.EncryptionStatus === 'encrypted'}
-        class:clear={status.EncryptionStatus === 'clear'}
-      >
-        <span class="lantern"><span class="glow"></span></span>
-        {encryptionLabel}
-      </span>
-    </div>
-
-    <div class="field">
-      <span class="label">Server</span>
-      <span class="value">{serverLabel}</span>
+    <div class="brand-mark">H</div>
+    <div>
+      <strong>Habo Client</strong>
+      <span>by The Habo Hub</span>
     </div>
   </div>
 
-  {#if status.DriverWarning}
-    <div class="group driver-warning-group">
-      <div class="driver-warning">
-        <span class="driver-warning-text">{status.DriverWarning}</span>
-        {#if status.DriverHelpURL}
-          <a class="driver-warning-link" href={status.DriverHelpURL} onclick={openDriverHelp}>
-            Get Npcap
-          </a>
-        {/if}
-      </div>
+  <section class="status-card">
+    <span class="status-dot" class:live={status.CaptureRunning && !status.CaptureError} class:error={status.CaptureError}></span>
+    <div>
+      <small>CAPTURE</small>
+      <b>{captureLabel}</b>
+      <span>{serverLabel}</span>
     </div>
-  {/if}
+  </section>
+
+  <section class="mode-card">
+    <div class="section-head">
+      <span>SCAN MODE</span>
+      <small>{status.UploadMode === 'private' ? 'PRIVATE' : 'PUBLIC'}</small>
+    </div>
+    <div class="mode-switch" role="group" aria-label="Scan mode">
+      <button
+        type="button"
+        class:active={status.UploadMode !== 'private'}
+        onclick={() => setMode('public')}
+      >Public</button>
+      <button
+        type="button"
+        class:active={status.UploadMode === 'private'}
+        disabled={!status.PrivateReady}
+        title={status.PrivateReady ? 'Keep scans private to your Habo Hub account' : 'Private mode unlocks after Habo Hub account linking is connected'}
+        onclick={() => setMode('private')}
+      >Private</button>
+    </div>
+    {#if status.UploadMode === 'private'}
+      <p>Scanned market data goes only to your Habo Hub private ingest.</p>
+    {:else}
+      <p>Scanned market data contributes to the public Albion Online Data Project.</p>
+    {/if}
+    {#if !status.PrivateReady}
+      <small class="private-note">Private mode is prepared in the client. Habo Hub account linking is the next step.</small>
+    {/if}
+  </section>
 
   <CountersPanel />
 
-  {#if status.UpdateAvailable}
-    <div class="group update-group">
-      <span class="update-badge">
-        <span class="label">Update available</span>
-        <span class="value">{status.UpdateAvailable}</span>
-      </span>
-    </div>
+  {#if status.DriverWarning}
+    <section class="warning">
+      <b>Capture setup needed</b>
+      <span>{status.DriverWarning}</span>
+      {#if status.DriverHelpURL}
+        <a href={status.DriverHelpURL} onclick={openDriverHelp}>Get Npcap</a>
+      {/if}
+    </section>
   {/if}
+
+  {#if status.UpdateAvailable}
+    <section class="update">
+      <span>UPDATE AVAILABLE</span>
+      <b>{status.UpdateAvailable}</b>
+    </section>
+  {/if}
+
+  <button class="hub-button" type="button" onclick={openHub}>Open The Habo Hub</button>
 </aside>
 
 <style>
   .sidebar {
-    position: relative;
     display: flex;
+    width: 260px;
+    flex: 0 0 260px;
+    min-height: 0;
     flex-direction: column;
-    gap: 1.75rem;
-    flex-shrink: 0;
-    padding: 1.5rem 1.4rem 1rem;
-    background: var(--bg-raised);
-    border-right: 1px solid var(--border);
+    gap: 1rem;
+    padding: 1.25rem;
     overflow-y: auto;
-    overflow-x: hidden;
-  }
-  .resize-handle {
-    position: absolute;
-    top: 0;
-    right: -3px;
-    width: 6px;
-    height: 100%;
-    cursor: col-resize;
-    touch-action: none;
-    z-index: 1;
-  }
-  .resize-handle::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 2px;
-    width: 2px;
-    height: 100%;
-    background: transparent;
-    transition: background-color 0.15s ease;
-  }
-  .resize-handle:hover::after,
-  .resize-handle.active::after {
-    background: var(--blue);
+    border-right: 1px solid var(--border);
+    background: #0d1319;
   }
   .brand {
     display: flex;
-    min-width: 0;
+    align-items: center;
+    gap: 0.75rem;
+    padding-bottom: 0.35rem;
   }
-  .wordmark {
+  .brand-mark {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    flex: none;
+    border: 1px solid rgba(255, 122, 26, 0.4);
+    border-radius: 11px;
+    background: linear-gradient(145deg, #ff963f, #c84a0e);
+    color: #160b03;
     font-family: var(--font-display);
-    font-size: 1.05rem;
-    font-weight: 600;
-    letter-spacing: 0.01em;
-    color: var(--text);
-    line-height: 1.2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 1.45rem;
+    font-weight: 900;
   }
-  .group {
+  .brand > div:last-child {
     display: flex;
+    min-width: 0;
     flex-direction: column;
-    gap: 0.9rem;
-    padding-top: 1.15rem;
-    border-top: 1px solid var(--border);
+    gap: 0.1rem;
   }
-  .field {
+  .brand strong { font-size: 1rem; }
+  .brand span { color: var(--orange-bright); font-size: 0.7rem; font-weight: 700; }
+
+  .status-card, .mode-card, .warning, .update {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-raised);
+  }
+  .status-card {
+    display: grid;
+    grid-template-columns: 10px minmax(0, 1fr);
+    gap: 0.7rem;
+    padding: 0.9rem;
+  }
+  .status-card > div {
     display: flex;
+    min-width: 0;
     flex-direction: column;
-    gap: 0.15rem;
+    gap: 0.18rem;
   }
-  .label {
-    font-size: 0.66rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+  .status-card small, .section-head span, .update span {
     color: var(--text-faint);
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
   }
-  .value {
-    font-family: var(--font-mono);
-    font-size: 0.85rem;
-    color: var(--text);
+  .status-card b { font-size: 0.86rem; }
+  .status-card span:not(.status-dot) {
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  .pill-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  .status-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    align-self: flex-start;
-    padding: 0.3rem 0.7rem 0.3rem 0.55rem;
-    border-radius: 999px;
-    font-size: 0.78rem;
-    font-weight: 500;
-    background: var(--ready-soft);
-    color: var(--ready);
-  }
-  .lantern {
-    position: relative;
-    display: inline-flex;
-    width: 7px;
-    height: 7px;
-  }
-  .lantern::before {
-    content: '';
-    position: absolute;
-    inset: 0;
+  .status-dot {
+    width: 9px;
+    height: 9px;
+    margin-top: 0.15rem;
     border-radius: 50%;
-    background: currentColor;
+    background: #737c84;
   }
-  .lantern .glow {
-    position: absolute;
-    inset: -4px;
-    border-radius: 50%;
-    background: currentColor;
-    opacity: 0;
+  .status-dot.live {
+    background: var(--green);
+    box-shadow: 0 0 0 5px rgba(134, 198, 111, 0.10);
   }
-  .status-pill.running {
-    background: var(--blue-soft);
-    color: var(--blue-bright);
-  }
-  .status-pill.running .glow {
-    animation: breathe 2.4s ease-in-out infinite;
-  }
-  .status-pill.error,
-  .status-pill.encrypted {
-    background: var(--ember-soft);
-    color: var(--ember);
-  }
-  .status-pill.clear {
-    background: var(--moss-soft);
-    color: var(--moss);
-  }
-  @keyframes breathe {
-    0%, 100% { opacity: 0; transform: scale(0.6); }
-    50% { opacity: 0.45; transform: scale(1.4); }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .status-pill.running .glow {
-      animation: none;
-    }
-  }
-  .driver-warning-group {
-    border-top: 1px solid var(--border);
-  }
-  .driver-warning {
+  .status-dot.error { background: var(--red); }
+
+  .mode-card { padding: 0.9rem; }
+  .section-head {
     display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: 0.6rem 0.7rem;
-    border-radius: var(--radius-sm);
-    background: var(--blue-soft);
-    border: 1px solid rgba(47, 140, 255, 0.3);
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.7rem;
   }
-  .driver-warning-text {
-    font-size: 0.78rem;
+  .section-head small {
+    color: var(--orange-bright);
+    font-size: 0.61rem;
+    font-weight: 900;
+  }
+  .mode-switch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.35rem;
+    padding: 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--bg-sunken);
+  }
+  .mode-switch button {
+    border: 0;
+    border-radius: 7px;
+    padding: 0.55rem;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .mode-switch button.active {
+    background: var(--orange-soft);
+    color: var(--orange-bright);
+  }
+  .mode-switch button:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+  .mode-card p, .private-note {
+    display: block;
+    margin: 0.7rem 0 0;
+    color: var(--text-muted);
+    font-size: 0.7rem;
     line-height: 1.5;
-    color: var(--blue);
   }
-  .driver-warning-link {
-    align-self: flex-start;
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-    color: var(--blue);
-    text-decoration: none;
-    border-bottom: 1px solid rgba(47, 140, 255, 0.5);
+  .private-note {
+    color: #7f8992;
+    font-size: 0.65rem;
   }
-  .driver-warning-link:hover {
-    border-bottom-color: var(--blue);
-  }
-  .update-group {
-    border-top: 1px solid var(--border);
-  }
-  .update-badge {
+  .warning, .update {
     display: flex;
     flex-direction: column;
-    gap: 0.2rem;
-    padding: 0.6rem 0.7rem;
-    border-radius: var(--radius-sm);
-    background: var(--blue-soft);
-    border: 1px solid rgba(47, 140, 255, 0.25);
+    gap: 0.4rem;
+    padding: 0.85rem;
   }
-  .update-badge .label {
-    color: var(--blue);
-    opacity: 0.9;
+  .warning { border-color: rgba(225, 94, 74, 0.28); }
+  .warning b { color: #ffaaa0; font-size: 0.76rem; }
+  .warning span { color: var(--text-muted); font-size: 0.68rem; line-height: 1.45; }
+  .warning a { color: var(--orange-bright); font-size: 0.7rem; font-weight: 800; text-decoration: none; }
+  .update b { font-size: 0.78rem; }
+  .hub-button {
+    margin-top: auto;
+    border: 1px solid rgba(255, 122, 26, 0.4);
+    border-radius: 9px;
+    padding: 0.7rem 0.8rem;
+    background: var(--orange-soft);
+    color: var(--orange-bright);
+    font-size: 0.75rem;
+    font-weight: 850;
+    cursor: pointer;
   }
-  .update-badge .value {
-    font-family: var(--font-body);
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--text);
+  .hub-button:hover { border-color: var(--orange); }
+  @media (max-width: 760px) {
+    .sidebar {
+      width: 100%;
+      flex: none;
+      border-right: 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .hub-button { margin-top: 0; }
   }
 </style>
