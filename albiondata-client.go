@@ -321,7 +321,11 @@ func runDashboardApp() {
 		}
 		if client.SetUploadMode(mode) {
 			dashboard.SetUploadMode(client.GetUploadMode(), client.PrivateUploadConfigured())
-			log.Infof("Habo scan mode changed to %s.", mode)
+			if mode == client.UploadModePublic {
+				log.Info("Public mode active. Only new market responses captured after this switch are sent to AODP; reopen or refresh the market category in Albion to scan it again.")
+			} else {
+				log.Info("Private mode active. New supported market responses are sent only to your Habo Hub account.")
+			}
 		} else {
 			log.Warnf("Unable to switch Habo scan mode to %s.", mode)
 			app.Event.Emit("status:changed", dashboard.GetStatus())
