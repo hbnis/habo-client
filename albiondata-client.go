@@ -325,14 +325,10 @@ func runDashboardApp() {
 	// Run(), and Show()/Focus() silently no-op if it's still nil) -
 	// ApplicationStarted only fires once that setup has completed.
 	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
-		// Use the same image as the tray icon for the Dock icon, rather
-		// than leaving it as whatever generic default the OS falls back
-		// to for an unbundled binary (there's no .icns/Info.plist - see
-		// scripts/build-darwin.sh, which ships a bare executable, not a
-		// .app bundle). Must happen here, not right after
-		// application.New(): SetIcon silently no-ops until app.impl is
-		// set partway through Run(), same as showDashboardWindow() below.
-		app.SetIcon(icon.TrayPNG)
+		// Use the dedicated Habo Client artwork for the app/window icon.
+		// The tray icon stays unchanged and continues to use icon.TrayPNG.
+		// This must happen here, after Wails has initialized app.impl.
+		app.SetIcon(icon.AppPNG)
 
 		showDashboardWindow()
 		if !dashboardWindow.IsVisible() {
