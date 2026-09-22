@@ -13,7 +13,7 @@
     DriverWarning: '',
     DriverHelpURL: '',
     EncryptionStatus: '',
-    UploadMode: 'public',
+    UploadMode: 'private',
     PrivateReady: false,
     HaboConnected: false,
     HaboPairing: false,
@@ -41,11 +41,6 @@
   let captureLabel = $derived(
     status.CaptureError ? 'Capture error' : status.CaptureRunning ? 'Scanner running' : 'Waiting for Albion'
   );
-
-  async function setMode(mode) {
-    if (mode === 'private' && !status.PrivateReady) return;
-    await Events.Emit('habo:scan-mode', mode);
-  }
 
   function openDriverHelp(event) {
     event.preventDefault();
@@ -100,7 +95,7 @@
     {#if status.HaboConnected}
       <div class="account-name">
         <span class="account-dot"></span>
-        <div><b>{status.HaboDisplayName || 'Habo Hub user'}</b><small>{status.HaboPremium ? 'Premium · Private scans available' : 'Free · Public scans available'}</small></div>
+        <div><b>{status.HaboDisplayName || 'Habo Hub user'}</b><small>{status.HaboPremium ? 'Premium · Private scans available' : 'Free account · Premium required for private scans'}</small></div>
       </div>
       <button class="account-secondary" type="button" onclick={disconnectHabo}>Disconnect</button>
     {:else if status.HaboPairing && status.HaboConnectURL}
@@ -110,7 +105,7 @@
       {/if}
       <button class="account-primary" type="button" onclick={finishPairing}>Continue in browser</button>
     {:else}
-      <p class="pair-copy">Connect your Habo Hub account to use Habo Hub market tools. Public scanning is available to every connected user.</p>
+      <p class="pair-copy">Connect your Habo Hub account to use Habo Client private market scanning.</p>
       <button class="account-primary" type="button" onclick={connectHabo}>Connect Habo Hub</button>
     {/if}
 
@@ -121,30 +116,15 @@
 
   <section class="mode-card">
     <div class="section-head">
-      <span>SCAN MODE</span>
-      <small>{status.UploadMode === 'private' ? 'PRIVATE' : 'PUBLIC'}</small>
+      <span>PRIVATE SCANNING</span>
+      <small class:connected={status.PrivateReady}>{status.PrivateReady ? 'ACTIVE' : status.HaboConnected ? 'PREMIUM' : 'LOCKED'}</small>
     </div>
-    <div class="mode-switch" role="group" aria-label="Scan mode">
-      <button
-        type="button"
-        class:active={status.UploadMode !== 'private'}
-        onclick={() => setMode('public')}
-      >Public</button>
-      <button
-        type="button"
-        class:active={status.UploadMode === 'private'}
-        disabled={!status.PrivateReady}
-        title={status.PrivateReady ? 'Keep scans private to your Habo Hub account' : status.HaboConnected ? 'Private mode requires Habo Hub Premium' : 'Connect your Habo Hub account first'}
-        onclick={() => setMode('private')}
-      >Private</button>
-    </div>
-    {#if status.UploadMode === 'private'}
-      <p>Scanned market data goes only to your Habo Hub private ingest.</p>
+    {#if status.PrivateReady}
+      <p>Scanned market data goes only to your connected Habo Hub account.</p>
+    {:else if status.HaboConnected}
+      <p>Private market scanning requires Habo Hub Premium.</p>
     {:else}
-      <p>New market scans contribute to the public Albion Online Data Project. If you just switched from Private, reopen or refresh the market category in Albion to send a new scan.</p>
-    {/if}
-    {#if !status.PrivateReady}
-      <small class="private-note">{status.HaboConnected ? 'Private mode is a Habo Hub Premium feature. Public mode still contributes your scans to AODP.' : 'Connect Habo Hub to see your account access. Public scans contribute to AODP.'}</small>
+      <p>Connect your Habo Hub account to enable private market scanning.</p>
     {/if}
   </section>
 
@@ -330,44 +310,15 @@
     font-size: 0.61rem;
     font-weight: 900;
   }
-  .mode-switch {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.35rem;
-    padding: 0.25rem;
-    border: 1px solid var(--border);
-    border-radius: 9px;
-    background: var(--bg-sunken);
-  }
-  .mode-switch button {
-    border: 0;
-    border-radius: 7px;
-    padding: 0.55rem;
-    background: transparent;
-    color: var(--text-muted);
-    font-size: 0.75rem;
-    font-weight: 800;
-    cursor: pointer;
-  }
-  .mode-switch button.active {
-    background: var(--orange-soft);
-    color: var(--orange-bright);
-  }
-  .mode-switch button:disabled {
-    cursor: not-allowed;
-    opacity: 0.4;
-  }
-  .mode-card p, .private-note {
+
+  .mode-card p {
     display: block;
     margin: 0.7rem 0 0;
     color: var(--text-muted);
     font-size: 0.7rem;
     line-height: 1.5;
   }
-  .private-note {
-    color: #7f8992;
-    font-size: 0.65rem;
-  }
+
   .warning, .update {
     display: flex;
     flex-direction: column;
