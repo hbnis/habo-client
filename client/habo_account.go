@@ -25,6 +25,7 @@ type haboClientConfig struct {
 type HaboAccountState struct {
 	Connected        bool
 	Pairing          bool
+	PremiumAccess    bool
 	DisplayName      string
 	ConnectURL       string
 	PairCode         string
@@ -35,6 +36,7 @@ type HaboAccountState struct {
 type haboPairStartResponse struct {
 	Connected        bool   `json:"connected"`
 	Pairing          bool   `json:"pairing"`
+	PremiumAccess    bool   `json:"premiumAccess"`
 	DisplayName      string `json:"displayName"`
 	PrivateIngestURL string `json:"privateIngestUrl"`
 	PairCode         string `json:"pairCode"`
@@ -47,6 +49,7 @@ type haboSessionResponse struct {
 	Connected        bool   `json:"connected"`
 	Pairing          bool   `json:"pairing"`
 	Expired          bool   `json:"expired"`
+	PremiumAccess    bool   `json:"premiumAccess"`
 	DisplayName      string `json:"displayName"`
 	PrivateIngestURL string `json:"privateIngestUrl"`
 	Error            string `json:"error"`
@@ -207,9 +210,15 @@ func RefreshHaboAccount() HaboAccountState {
 	}
 
 	if payload.Connected {
-		SetPrivateIngestBaseURLs("habo+" + strings.TrimRight(payload.PrivateIngestURL, "/"))
+		if payload.PremiumAccess && strings.TrimSpace(payload.PrivateIngestURL) != "" {
+			SetPrivateIngestBaseURLs("habo+" + strings.TrimRight(payload.PrivateIngestURL, "/"))
+		} else {
+			SetPrivateIngestBaseURLs("")
+			SetUploadMode(UploadModePublic)
+		}
 		return HaboAccountState{
 			Connected:        true,
+			PremiumAccess:    payload.PremiumAccess,
 			DisplayName:      payload.DisplayName,
 			PrivateIngestURL: payload.PrivateIngestURL,
 		}
@@ -264,9 +273,15 @@ func StartHaboPairing() HaboAccountState {
 		return HaboAccountState{Error: "The Habo Hub returned an unreadable response."}
 	}
 	if resp.StatusCode == http.StatusOK && payload.Connected {
-		SetPrivateIngestBaseURLs("habo+" + strings.TrimRight(payload.PrivateIngestURL, "/"))
+		if payload.PremiumAccess && strings.TrimSpace(payload.PrivateIngestURL) != "" {
+			SetPrivateIngestBaseURLs("habo+" + strings.TrimRight(payload.PrivateIngestURL, "/"))
+		} else {
+			SetPrivateIngestBaseURLs("")
+			SetUploadMode(UploadModePublic)
+		}
 		return HaboAccountState{
 			Connected:        true,
+			PremiumAccess:    payload.PremiumAccess,
 			DisplayName:      payload.DisplayName,
 			PrivateIngestURL: payload.PrivateIngestURL,
 		}
