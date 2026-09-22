@@ -17,6 +17,7 @@
     PrivateReady: false,
     HaboConnected: false,
     HaboPairing: false,
+    HaboPremium: false,
     HaboDisplayName: '',
     HaboPairCode: '',
     HaboConnectURL: '',
@@ -99,7 +100,7 @@
     {#if status.HaboConnected}
       <div class="account-name">
         <span class="account-dot"></span>
-        <div><b>{status.HaboDisplayName || 'Habo Hub user'}</b><small>Private scans available</small></div>
+        <div><b>{status.HaboDisplayName || 'Habo Hub user'}</b><small>{status.HaboPremium ? 'Premium · Private scans available' : 'Free · Public scans available'}</small></div>
       </div>
       <button class="account-secondary" type="button" onclick={disconnectHabo}>Disconnect</button>
     {:else if status.HaboPairing && status.HaboConnectURL}
@@ -109,7 +110,7 @@
       {/if}
       <button class="account-primary" type="button" onclick={finishPairing}>Continue in browser</button>
     {:else}
-      <p class="pair-copy">Connect your Habo Hub account to keep market scans private.</p>
+      <p class="pair-copy">Connect your Habo Hub account to use Habo Hub market tools. Public scanning is available to every connected user.</p>
       <button class="account-primary" type="button" onclick={connectHabo}>Connect Habo Hub</button>
     {/if}
 
@@ -133,7 +134,7 @@
         type="button"
         class:active={status.UploadMode === 'private'}
         disabled={!status.PrivateReady}
-        title={status.PrivateReady ? 'Keep scans private to your Habo Hub account' : 'Private mode unlocks after Habo Hub account linking is connected'}
+        title={status.PrivateReady ? 'Keep scans private to your Habo Hub account' : status.HaboConnected ? 'Private mode requires Habo Hub Premium' : 'Connect your Habo Hub account first'}
         onclick={() => setMode('private')}
       >Private</button>
     </div>
@@ -143,7 +144,7 @@
       <p>Scanned market data contributes to the public Albion Online Data Project.</p>
     {/if}
     {#if !status.PrivateReady}
-      <small class="private-note">Private mode is prepared in the client. Habo Hub account linking is the next step.</small>
+      <small class="private-note">{status.HaboConnected ? 'Private mode is a Habo Hub Premium feature. Public mode still contributes your scans to AODP.' : 'Connect Habo Hub to see your account access. Public scans contribute to AODP.'}</small>
     {/if}
   </section>
 
