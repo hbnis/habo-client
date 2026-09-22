@@ -3,11 +3,12 @@ package icon
 
 import _ "embed"
 
-// TrayPNG is the application icon in PNG form, used for the Wails v3
-// system tray on all platforms (darwin/windows/linux). It is separate
-// from the platform-specific Data variables (icondarwin.go, iconwin.go),
-// which remain in their original .ico/.png forms for other uses (e.g.
-// the Windows executable icon via go-winres).
+// TrayPNG keeps the existing tray/menu-bar icon.
 //
 //go:embed albiondata-client.png
 var TrayPNG []byte
+
+// AppPNG is the Habo Client window/taskbar/executable artwork.
+//
+//go:embed habo-app-icon.png
+var AppPNG []byte
