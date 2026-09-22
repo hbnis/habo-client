@@ -9,17 +9,17 @@ The goal is intentionally narrow: help players scan marketplace data for flippin
 - Watches Albion Online network traffic using the proven Albion Online Data Project capture/parser foundation.
 - Reads market orders and market history that the player manually loads in game.
 - Shows scanner status, detected server and session counters in a Habo-branded desktop UI.
-- Public mode contributes scanned market data to the Albion Online Data Project.
-- Private mode routing is built into the client and becomes available when a Habo private ingest/account connection is configured.
+- Habo Client scanning is private-only: supported market observations are sent to the connected Habo Hub account when Private scanning is available.
+- Habo Hub Premium is required for private market ingest and Private Flips.
 - Only market orders and market history are forwarded by the Habo build.
 
 Habo Client does not click, search, buy, sell, inject into the game or automate gameplay.
 
 ## Current development status
 
-The desktop shell, market-only routing, Public/Private scan-mode foundation and Windows Habo Client packaging are in progress.
+The desktop shell, market-only routing, Habo Hub account pairing, authenticated private ingest and Windows packaging are implemented.
 
-The next major piece is Habo Hub account pairing and authenticated private ingest so Private mode can associate scans with the signed-in Habo Hub account.
+The client no longer exposes a Public scan mode. The AODP project remains the packet capture/parser foundation, but Habo Client market uploads are routed only to the connected Habo Hub account when private ingest is available.
 
 ## Albion Online Data Project foundation
 
