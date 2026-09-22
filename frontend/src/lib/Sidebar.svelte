@@ -141,7 +141,7 @@
     {#if status.UploadMode === 'private'}
       <p>Scanned market data goes only to your Habo Hub private ingest.</p>
     {:else}
-      <p>Scanned market data contributes to the public Albion Online Data Project.</p>
+      <p>New market scans contribute to the public Albion Online Data Project. If you just switched from Private, reopen or refresh the market category in Albion to send a new scan.</p>
     {/if}
     {#if !status.PrivateReady}
       <small class="private-note">{status.HaboConnected ? 'Private mode is a Habo Hub Premium feature. Public mode still contributes your scans to AODP.' : 'Connect Habo Hub to see your account access. Public scans contribute to AODP.'}</small>
