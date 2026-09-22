@@ -31,7 +31,7 @@ var (
 	uploaderCache = map[string]uploader{}
 
 	uploadModeMu sync.RWMutex
-	uploadMode   = UploadModePublic
+	uploadMode   = UploadModePrivate
 )
 
 const (
@@ -64,14 +64,13 @@ func PrivateUploadConfigured() bool {
 }
 
 func SetUploadMode(mode string) bool {
-	if mode != UploadModePublic && mode != UploadModePrivate {
-		return false
-	}
-	if mode == UploadModePrivate && !PrivateUploadConfigured() {
+	// Habo Client is private-only. Keep the public constant for upstream
+	// compatibility, but never allow the Habo build to switch into it.
+	if mode != UploadModePrivate {
 		return false
 	}
 	uploadModeMu.Lock()
-	uploadMode = mode
+	uploadMode = UploadModePrivate
 	uploadModeMu.Unlock()
 	return true
 }
@@ -146,24 +145,12 @@ func sendMsgToPublicUploaders(upload interface{}, topic string, state *albionSta
 		return
 	}
 
-	switch GetUploadMode() {
-	case UploadModePrivate:
-		privateUploaders := createUploaders(strings.Split(getPrivateIngestBaseURLs(), ","))
-		if len(privateUploaders) == 0 {
-			log.Warn("Private scan mode is selected but no Habo private ingest is configured.")
-			return
-		}
-		sendMsgToUploaders(data, topic, privateUploaders, state, identifier)
-
-	default:
-		publicIngestBaseUrls := ConfigGlobal.PublicIngestBaseUrls
-		// https+pow://albion-online-data.com is the AODP placeholder for every realm.
-		if strings.Contains(publicIngestBaseUrls, "https+pow://albion-online-data.com") {
-			publicIngestBaseUrls = strings.Replace(publicIngestBaseUrls, "https+pow://albion-online-data.com", state.AODataIngestBaseURL, -1)
-		}
-		publicUploaders := createUploaders(strings.Split(publicIngestBaseUrls, ","))
-		sendMsgToUploaders(data, topic, publicUploaders, state, identifier)
+	privateUploaders := createUploaders(strings.Split(getPrivateIngestBaseURLs(), ","))
+	if len(privateUploaders) == 0 {
+		log.Debug("Private market scan captured, but no Habo private ingest is available for this account.")
+		return
 	}
+	sendMsgToUploaders(data, topic, privateUploaders, state, identifier)
 
 	if ConfigGlobal.EnableWebsockets {
 		sendMsgToWebSockets(data, topic)
