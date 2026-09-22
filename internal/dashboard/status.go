@@ -25,6 +25,7 @@ type Status struct {
 	PrivateReady     bool
 	HaboConnected    bool
 	HaboPairing      bool
+	HaboPremium      bool
 	HaboDisplayName  string
 	HaboPairCode     string
 	HaboConnectURL   string
@@ -217,11 +218,12 @@ func SetUploadMode(mode string, privateReady bool) {
 }
 
 // SetHaboAccount records the desktop client's Habo Hub connection state.
-func SetHaboAccount(connected, pairing bool, displayName, pairCode, connectURL, accountError string) {
+func SetHaboAccount(connected, pairing, premium bool, displayName, pairCode, connectURL, accountError string) {
 	statusMu.Lock()
 	next := status
 	next.HaboConnected = connected
 	next.HaboPairing = pairing
+	next.HaboPremium = premium
 	next.HaboDisplayName = displayName
 	next.HaboPairCode = pairCode
 	next.HaboConnectURL = connectURL
