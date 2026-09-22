@@ -147,12 +147,13 @@ func applyHaboAccountState(state client.HaboAccountState) {
 	dashboard.SetHaboAccount(
 		state.Connected,
 		state.Pairing,
+		state.PremiumAccess,
 		state.DisplayName,
 		state.PairCode,
 		state.ConnectURL,
 		state.Error,
 	)
-	dashboard.SetUploadMode(client.GetUploadMode(), state.Connected)
+	dashboard.SetUploadMode(client.GetUploadMode(), state.Connected && state.PremiumAccess && client.PrivateUploadConfigured())
 }
 
 func startHaboPairingFlow(app *application.App) {
@@ -203,7 +204,7 @@ func startHaboPairingFlow(app *application.App) {
 		}
 	}
 
-	dashboard.SetHaboAccount(false, false, "", "", "", "Pairing expired. Start the connection again.")
+	dashboard.SetHaboAccount(false, false, false, "", "", "", "Pairing expired. Start the connection again.")
 	dashboard.SetUploadMode(client.GetUploadMode(), false)
 }
 
