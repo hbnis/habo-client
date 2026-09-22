@@ -140,7 +140,7 @@ func clearHaboToken() error {
 	haboToken = ""
 	haboMu.Unlock()
 	SetPrivateIngestBaseURLs("")
-	SetUploadMode(UploadModePublic)
+	SetUploadMode(UploadModePrivate)
 	return nil
 }
 
@@ -214,7 +214,7 @@ func RefreshHaboAccount() HaboAccountState {
 			SetPrivateIngestBaseURLs("habo+" + strings.TrimRight(payload.PrivateIngestURL, "/"))
 		} else {
 			SetPrivateIngestBaseURLs("")
-			SetUploadMode(UploadModePublic)
+			SetUploadMode(UploadModePrivate)
 		}
 		return HaboAccountState{
 			Connected:        true,
@@ -277,7 +277,7 @@ func StartHaboPairing() HaboAccountState {
 			SetPrivateIngestBaseURLs("habo+" + strings.TrimRight(payload.PrivateIngestURL, "/"))
 		} else {
 			SetPrivateIngestBaseURLs("")
-			SetUploadMode(UploadModePublic)
+			SetUploadMode(UploadModePrivate)
 		}
 		return HaboAccountState{
 			Connected:        true,
