@@ -1,13 +1,13 @@
 <script>
   import { onDestroy } from 'svelte';
-  import { Browser, Events } from '@wailsio/runtime';
+  import { Events } from '@wailsio/runtime';
   import { DashboardService } from '../../bindings/github.com/ao-data/albiondata-client/internal/dashboard/index.js';
 
   let status = $state({
     CaptureRunning: false,
     CaptureError: false,
     ServerID: 0,
-    UploadMode: 'public',
+    UploadMode: 'private',
     PrivateReady: false,
     EncryptionStatus: '',
   });
@@ -36,8 +36,8 @@
     status.CaptureError ? 'Capture stopped' : status.CaptureRunning ? 'Scanning' : 'Waiting for Albion'
   );
 
-  function openFlipper() {
-    Browser.OpenURL('https://habonis.com/tools/market-flipping-calculator');
+  function openGuides() {
+    // Guide videos will be wired here when the Guides section is ready.
   }
 </script>
 
@@ -51,7 +51,7 @@
         your game loads so The Habo Hub can find useful flipping opportunities.
       </p>
     </div>
-    <button class="primary" type="button" onclick={openFlipper}>Open Market Flipper</button>
+    <button class="primary guides" type="button" onclick={openGuides} disabled title="Guide videos are coming soon">Guides</button>
   </div>
 
   <div class="status-grid">
@@ -65,7 +65,7 @@
     </article>
     <article>
       <span>Scan mode</span>
-      <strong>{status.UploadMode === 'private' ? 'Private' : 'Public'}</strong>
+      <strong>{status.PrivateReady ? 'Private' : 'Unavailable'}</strong>
     </article>
     <article>
       <span>Orders scanned</span>
@@ -158,6 +158,13 @@
     cursor: pointer;
   }
   .primary:hover { background: var(--orange-bright); }
+  .primary.guides:disabled {
+    cursor: default;
+    border-color: rgba(255, 122, 26, 0.35);
+    background: var(--orange-soft);
+    color: var(--orange-bright);
+    opacity: 1;
+  }
   .status-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
