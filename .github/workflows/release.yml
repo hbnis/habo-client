@@ -10,6 +10,8 @@ permissions:
 jobs:
   build:
     uses: ./.github/workflows/build.yml
+    with:
+      version_ref_name: ${{ github.event.release.tag_name }}
 
   publish:
     name: Sign and publish updater assets
