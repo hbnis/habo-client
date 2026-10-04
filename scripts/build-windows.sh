@@ -83,6 +83,14 @@ s, n = re.subn(pattern, minimal_dashboard, s, count=1, flags=re.S)
 if n != 1:
     raise SystemExit(f"could not replace runDashboardApp, matches={n}")
 
+# Those packages are only used by the stripped window lifecycle code.
+for import_line in [
+    '\t"github.com/ao-data/albiondata-client/internal/dockicon"\n',
+    '\t"github.com/ao-data/albiondata-client/internal/winstate"\n',
+    '\t"github.com/wailsapp/wails/v3/pkg/events"\n',
+]:
+    s = s.replace(import_line, "", 1)
+
 p.write_text(s)
 PY
 
