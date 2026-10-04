@@ -2,6 +2,8 @@
 
 set -eo pipefail
 
+VERSION_REF="${HABO_VERSION:-$GITHUB_REF_NAME}"
+
 rm -f albiondata-client
 rm -f albiondata-client.gz
 rm -f update-darwin-amd64.gz
@@ -16,7 +18,7 @@ export CGO_ENABLED=1
 export GOARCH=amd64
 export CC="clang -arch x86_64"
 export CGO_LDFLAGS="-arch x86_64"
-go build -ldflags "-s -w -X main.version=$GITHUB_REF_NAME" -o albiondata-client albiondata-client.go
+go build -ldflags "-s -w -X main.version=$VERSION_REF" -o albiondata-client albiondata-client.go
 
 gzip -k9 albiondata-client
 mv albiondata-client.gz update-darwin-amd64.gz
