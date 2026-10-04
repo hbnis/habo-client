@@ -40,6 +40,14 @@ jobs:
           repo-checkout: false
           go-version-file: go.mod
           go-package: ./...
+          output-format: json
+          output-file: govulncheck.json
+
+      - name: Upload vulnerability report
+        uses: actions/upload-artifact@v6
+        with:
+          name: govulncheck-report
+          path: govulncheck.json
 
   frontend-vulnerabilities:
     name: Frontend dependency audit
