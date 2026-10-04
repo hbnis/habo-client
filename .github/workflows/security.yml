@@ -21,6 +21,12 @@ jobs:
       - name: Install libpcap headers
         run: sudo apt-get update && sudo apt-get install -y libpcap-dev
 
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
       - name: Set up Node
         uses: actions/setup-node@v5
         with:
@@ -34,21 +40,23 @@ jobs:
         run: npm run build
         working-directory: frontend
 
-      - name: Scan Go dependencies and reachable code
-        continue-on-error: true
-        uses: golang/govulncheck-action@v1
-        with:
-          repo-checkout: false
-          go-version-file: go.mod
-          go-package: ./...
-          output-format: json
-          output-file: govulncheck.json
+      - name: Run govulncheck diagnostic
+        shell: bash
+        run: |
+          set +e
+          go run golang.org/x/vuln/cmd/govulncheck@latest ./... > govulncheck.txt 2>&1
+          code=$?
+          echo "$code" > govulncheck.exit
+          cat govulncheck.txt
+          exit 0
 
       - name: Upload vulnerability report
         uses: actions/upload-artifact@v6
         with:
           name: govulncheck-report
-          path: govulncheck.json
+          path: |
+            govulncheck.txt
+            govulncheck.exit
 
   frontend-vulnerabilities:
     name: Frontend dependency audit
