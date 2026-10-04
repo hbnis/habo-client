@@ -68,3 +68,33 @@ func TestLoad_RejectsZeroSizedBounds(t *testing.T) {
 		t.Fatalf("expected Load to reject zero-sized bounds")
 	}
 }
+
+func TestLoad_RejectsTinySavedWindow(t *testing.T) {
+	withTempConfigDir(t)
+
+	if err := Save(Bounds{X: 10, Y: 10, Width: 180, Height: 70}); err != nil {
+		t.Fatalf("Save failed: %v", err)
+	}
+
+	_, ok := Load()
+	if ok {
+		t.Fatalf("expected Load to reject an unusably small saved window")
+	}
+}
+
+func TestLoad_AcceptsMinimumUsableWindow(t *testing.T) {
+	withTempConfigDir(t)
+
+	want := Bounds{X: 10, Y: 10, Width: minWindowWidth, Height: minWindowHeight}
+	if err := Save(want); err != nil {
+		t.Fatalf("Save failed: %v", err)
+	}
+
+	got, ok := Load()
+	if !ok {
+		t.Fatalf("expected Load to accept the minimum usable window")
+	}
+	if got != want {
+		t.Fatalf("Load returned %+v, want %+v", got, want)
+	}
+}
