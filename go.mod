@@ -12,7 +12,7 @@ require (
 	github.com/nats-io/go-nats v1.7.2
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/viper v1.21.0
-	github.com/wailsapp/wails/v3 v3.0.0-beta.5
+	github.com/wailsapp/wails/v3 v3.0.0-beta.26
 	golang.org/x/sys v0.45.0
 	gopkg.in/toast.v1 v1.0.0-20180812000517-0a84660828b2
 )
