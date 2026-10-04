@@ -15,6 +15,18 @@ The goal is intentionally narrow: help players scan marketplace data for flippin
 
 Habo Client does not click, search, buy, sell, inject into the game or automate gameplay.
 
+## Safety & privacy
+
+Habo Client is open source and uses multiple independent security controls around account pairing, private ingest and automatic updates.
+
+- Production Habo account traffic is restricted to trusted HTTPS Habo Hub URLs.
+- Premium access is enforced server-side rather than trusted to the desktop UI.
+- Windows device tokens are protected with Windows DPAPI before being stored locally.
+- Official automatic updater payloads must pass Ed25519 signature verification before they can be applied.
+- Automated dependency and vulnerability checks run in GitHub Actions.
+
+See [Safety & Privacy](docs/SAFETY_PRIVACY.md) for exactly what the client reads, sends and stores. See [SECURITY.md](SECURITY.md) for vulnerability reporting and update-security details.
+
 ## Current development status
 
 The desktop shell, market-only routing, Habo Hub account pairing, authenticated private ingest and Windows packaging are implemented.
