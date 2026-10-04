@@ -72,6 +72,11 @@ jobs:
         if: matrix.os == 'linux'
         run: go test ./...
 
+      - name: Test signed updater module
+        if: matrix.os == 'linux'
+        working-directory: third_party/go-githubupdate
+        run: go test ./...
+
       - uses: actions/upload-artifact@v6
         with:
           name: build-${{ matrix.os }}

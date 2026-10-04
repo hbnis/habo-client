@@ -1,0 +1,86 @@
+name: Security checks
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  schedule:
+    - cron: '23 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  go-vulnerabilities:
+    name: Go vulnerability scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Linux build dependencies
+        run: sudo apt-get update && sudo apt-get install -y libpcap-dev libgtk-4-dev libwebkitgtk-6.0-dev
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+        working-directory: frontend
+      - name: Build frontend assets required by Go embed
+        run: npm run build
+        working-directory: frontend
+
+      - name: Scan Go dependencies and reachable code
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+  updater-test-diagnostic:
+    name: Signed updater test diagnostic
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Run updater tests and capture output
+        working-directory: third_party/go-githubupdate
+        shell: bash
+        run: |
+          set +e
+          go test ./... > updater-test.txt 2>&1
+          code=$?
+          echo "$code" > updater-test.exit
+          cat updater-test.txt
+          exit 0
+      - uses: actions/upload-artifact@v6
+        with:
+          name: updater-test-diagnostic
+          path: |
+            third_party/go-githubupdate/updater-test.txt
+            third_party/go-githubupdate/updater-test.exit
+
+  frontend-vulnerabilities:
+    name: Frontend dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+        working-directory: frontend

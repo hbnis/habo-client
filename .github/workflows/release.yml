@@ -4,36 +4,61 @@ on:
   release:
     types: [created]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     uses: ./.github/workflows/build.yml
 
   publish:
-    name: Publish updater assets
+    name: Sign and publish updater assets
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
       - uses: actions/download-artifact@v6
         with:
           name: build-linux
+          path: dist/linux
       - uses: actions/download-artifact@v6
         with:
           name: build-windows
+          path: dist/windows
       - uses: actions/download-artifact@v6
         with:
           name: build-darwin
+          path: dist/darwin
 
-      # Public GitHub releases contain updater payloads only.
-      # User-facing installers stay private and are served through Habonis.com.
-      - uses: shogo82148/actions-upload-release-asset@v1
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: update-linux-amd64.gz
-      - uses: shogo82148/actions-upload-release-asset@v1
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: update-windows-amd64.exe.gz
-      - uses: shogo82148/actions-upload-release-asset@v1
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: update-darwin-amd64.gz
+      - name: Sign updater payloads
+        env:
+          HABO_UPDATE_SIGNING_KEY: ${{ secrets.HABO_UPDATE_SIGNING_KEY }}
+        run: |
+          go run ./scripts/sign-updates.go \
+            dist/linux/update-linux-amd64.gz \
+            dist/windows/update-windows-amd64.exe.gz \
+            dist/darwin/update-darwin-amd64.gz
+
+      # Public GitHub releases contain updater payloads and detached signatures
+      # only. User-facing installers stay private and are served through
+      # Habonis.com.
+      - name: Upload signed updater assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            dist/linux/update-linux-amd64.gz \
+            dist/linux/update-linux-amd64.gz.sig \
+            dist/windows/update-windows-amd64.exe.gz \
+            dist/windows/update-windows-amd64.exe.gz.sig \
+            dist/darwin/update-darwin-amd64.gz \
+            dist/darwin/update-darwin-amd64.gz.sig \
+            --clobber

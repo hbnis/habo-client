@@ -1,6 +1,6 @@
 module github.com/ao-data/albiondata-client
 
-go 1.25.0
+go 1.26.8
 
 require (
 	github.com/ao-data/go-githubupdate v0.0.0-20260201170319-c56c2e714903
@@ -51,3 +51,5 @@ require (
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 )
+
+replace github.com/ao-data/go-githubupdate => ./third_party/go-githubupdate
