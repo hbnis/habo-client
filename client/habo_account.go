@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -19,7 +20,8 @@ import (
 const defaultHaboHubURL = "https://habonis.com"
 
 type haboClientConfig struct {
-	Token string `json:"token"`
+	Token          string `json:"token,omitempty"`
+	ProtectedToken string `json:"protectedToken,omitempty"`
 }
 
 type HaboAccountState struct {
@@ -62,10 +64,92 @@ var (
 )
 
 func haboHubURL() string {
-	if value := strings.TrimSpace(os.Getenv("HABO_HUB_URL")); value != "" {
-		return strings.TrimRight(value, "/")
+	raw := strings.TrimSpace(os.Getenv("HABO_HUB_URL"))
+	if raw == "" {
+		return defaultHaboHubURL
 	}
-	return defaultHaboHubURL
+	validated, err := validateHaboBaseURL(raw)
+	if err != nil {
+		// Never send a device token to an arbitrary endpoint because of a bad
+		// environment value. Fall back to the production Habo Hub instead.
+		return defaultHaboHubURL
+	}
+	return validated
+}
+
+func validateHaboBaseURL(raw string) (string, error) {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return "", err
+	}
+	if parsed.User != nil || parsed.Hostname() == "" || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return "", errors.New("invalid Habo Hub URL")
+	}
+	if parsed.Path != "" && parsed.Path != "/" {
+		return "", errors.New("Habo Hub URL must not contain a path")
+	}
+
+	host := strings.ToLower(parsed.Hostname())
+	if isLocalHaboDevHost(host) {
+		if parsed.Scheme != "http" && parsed.Scheme != "https" {
+			return "", errors.New("local Habo Hub URL must use http or https")
+		}
+	} else {
+		if parsed.Scheme != "https" {
+			return "", errors.New("Habo Hub URL must use https")
+		}
+		if host != "habonis.com" && !strings.HasSuffix(host, ".habonis.com") {
+			return "", errors.New("untrusted Habo Hub host")
+		}
+		if port := parsed.Port(); port != "" && port != "443" {
+			return "", errors.New("unexpected Habo Hub port")
+		}
+	}
+
+	parsed.Path = strings.TrimRight(parsed.Path, "/")
+	return strings.TrimRight(parsed.String(), "/"), nil
+}
+
+func isLocalHaboDevHost(host string) bool {
+	return host == "localhost" || host == "127.0.0.1" || host == "::1"
+}
+
+func trustedHaboResponseURL(raw, expectedPath string, allowQuery bool) (string, error) {
+	candidate, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || candidate.User != nil || candidate.Fragment != "" {
+		return "", errors.New("invalid Habo Hub response URL")
+	}
+	base, err := url.Parse(haboHubURL())
+	if err != nil {
+		return "", err
+	}
+	if candidate.Scheme != base.Scheme || !strings.EqualFold(candidate.Host, base.Host) {
+		return "", errors.New("Habo Hub response URL changed origin")
+	}
+	if candidate.Path != expectedPath {
+		return "", errors.New("unexpected Habo Hub response path")
+	}
+	if !allowQuery && candidate.RawQuery != "" {
+		return "", errors.New("unexpected Habo Hub response query")
+	}
+	return candidate.String(), nil
+}
+
+func configurePrivateIngest(raw string, premiumAccess bool) (string, error) {
+	if !premiumAccess || strings.TrimSpace(raw) == "" {
+		SetPrivateIngestBaseURLs("")
+		SetUploadMode(UploadModePrivate)
+		return "", nil
+	}
+
+	trusted, err := trustedHaboResponseURL(raw, "/api/client/ingest", false)
+	if err != nil {
+		SetPrivateIngestBaseURLs("")
+		SetUploadMode(UploadModePrivate)
+		return "", err
+	}
+	SetPrivateIngestBaseURLs("habo+" + strings.TrimRight(trusted, "/"))
+	return trusted, nil
 }
 
 func haboConfigPath() (string, error) {
@@ -97,7 +181,17 @@ func loadHaboToken() string {
 	if json.Unmarshal(data, &config) != nil {
 		return ""
 	}
-	token := strings.TrimSpace(config.Token)
+
+	var token string
+	if strings.TrimSpace(config.ProtectedToken) != "" {
+		token, err = unprotectHaboToken(strings.TrimSpace(config.ProtectedToken))
+		if err != nil {
+			return ""
+		}
+	} else {
+		token = strings.TrimSpace(config.Token)
+	}
+	token = strings.TrimSpace(token)
 	if token == "" {
 		return ""
 	}
@@ -105,6 +199,15 @@ func loadHaboToken() string {
 	haboMu.Lock()
 	haboToken = token
 	haboMu.Unlock()
+
+	// Transparently migrate the previous plaintext Windows token file to
+	// user-bound DPAPI encryption. On other platforms protectHaboToken reports
+	// protected=false and the existing mode-0600 storage stays unchanged.
+	if config.ProtectedToken == "" && config.Token != "" {
+		if _, protected, protectErr := protectHaboToken(token); protectErr == nil && protected {
+			_ = saveHaboToken(token)
+		}
+	}
 	return token
 }
 
@@ -116,7 +219,18 @@ func saveHaboToken(token string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return err
 	}
-	data, err := json.Marshal(haboClientConfig{Token: token})
+
+	stored, protected, err := protectHaboToken(token)
+	if err != nil {
+		return err
+	}
+	config := haboClientConfig{}
+	if protected {
+		config.ProtectedToken = stored
+	} else {
+		config.Token = stored
+	}
+	data, err := json.Marshal(config)
 	if err != nil {
 		return err
 	}
@@ -210,17 +324,20 @@ func RefreshHaboAccount() HaboAccountState {
 	}
 
 	if payload.Connected {
-		if payload.PremiumAccess && strings.TrimSpace(payload.PrivateIngestURL) != "" {
-			SetPrivateIngestBaseURLs("habo+" + strings.TrimRight(payload.PrivateIngestURL, "/"))
-		} else {
-			SetPrivateIngestBaseURLs("")
-			SetUploadMode(UploadModePrivate)
+		trustedIngest, ingestErr := configurePrivateIngest(payload.PrivateIngestURL, payload.PremiumAccess)
+		if ingestErr != nil {
+			return HaboAccountState{
+				Connected:     true,
+				PremiumAccess: payload.PremiumAccess,
+				DisplayName:   payload.DisplayName,
+				Error:         "The Habo Hub returned an unsafe private ingest URL.",
+			}
 		}
 		return HaboAccountState{
 			Connected:        true,
 			PremiumAccess:    payload.PremiumAccess,
 			DisplayName:      payload.DisplayName,
-			PrivateIngestURL: payload.PrivateIngestURL,
+			PrivateIngestURL: trustedIngest,
 		}
 	}
 
@@ -273,17 +390,20 @@ func StartHaboPairing() HaboAccountState {
 		return HaboAccountState{Error: "The Habo Hub returned an unreadable response."}
 	}
 	if resp.StatusCode == http.StatusOK && payload.Connected {
-		if payload.PremiumAccess && strings.TrimSpace(payload.PrivateIngestURL) != "" {
-			SetPrivateIngestBaseURLs("habo+" + strings.TrimRight(payload.PrivateIngestURL, "/"))
-		} else {
-			SetPrivateIngestBaseURLs("")
-			SetUploadMode(UploadModePrivate)
+		trustedIngest, ingestErr := configurePrivateIngest(payload.PrivateIngestURL, payload.PremiumAccess)
+		if ingestErr != nil {
+			return HaboAccountState{
+				Connected:     true,
+				PremiumAccess: payload.PremiumAccess,
+				DisplayName:   payload.DisplayName,
+				Error:         "The Habo Hub returned an unsafe private ingest URL.",
+			}
 		}
 		return HaboAccountState{
 			Connected:        true,
 			PremiumAccess:    payload.PremiumAccess,
 			DisplayName:      payload.DisplayName,
-			PrivateIngestURL: payload.PrivateIngestURL,
+			PrivateIngestURL: trustedIngest,
 		}
 	}
 	if resp.StatusCode != http.StatusCreated {
@@ -293,9 +413,17 @@ func StartHaboPairing() HaboAccountState {
 		return HaboAccountState{Error: payload.Error}
 	}
 
+	trustedConnect, connectErr := trustedHaboResponseURL(payload.ConnectURL, "/client/connect", true)
+	if connectErr != nil {
+		return HaboAccountState{
+			Pairing:  true,
+			PairCode: payload.PairCode,
+			Error:    "The Habo Hub returned an unsafe pairing URL.",
+		}
+	}
 	return HaboAccountState{
 		Pairing:    true,
-		ConnectURL: payload.ConnectURL,
+		ConnectURL: trustedConnect,
 		PairCode:   payload.PairCode,
 	}
 }
