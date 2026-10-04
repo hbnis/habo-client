@@ -1,6 +1,6 @@
 <script>
   import { onDestroy } from 'svelte';
-  import { Events } from '@wailsio/runtime';
+  import { Browser, Events } from '@wailsio/runtime';
   import { DashboardService } from '../../bindings/github.com/ao-data/albiondata-client/internal/dashboard/index.js';
 
   let status = $state({
@@ -33,25 +33,25 @@
   let orders = $derived(counts['marketorders.ingest'] ?? 0);
   let histories = $derived(counts['markethistories.ingest'] ?? 0);
   let captureState = $derived(
-    status.CaptureError ? 'Capture stopped' : status.CaptureRunning ? 'Scanning' : 'Waiting for Albion'
+    status.CaptureError ? 'Capture stopped' : status.CaptureRunning ? 'Reading market' : 'Waiting for Albion'
   );
 
   function openGuides() {
-    // Guide videos will be wired here when the Guides section is ready.
+    Browser.OpenURL('https://www.youtube.com/@Habonis/membership');
   }
 </script>
 
 <section class="market-panel">
   <div class="hero">
     <div>
-      <span class="eyebrow">MARKET SCANNER</span>
+      <span class="eyebrow">MARKET HELPER</span>
       <h1>Browse the market.<br /><em>Habo Client takes the notes.</em></h1>
       <p>
-        Open the Albion marketplace and browse items normally. Habo Client records the market data
-        your game loads so The Habo Hub can find useful flipping opportunities.
+        Open the Albion marketplace and browse items normally. Habo Client reads the market data
+        your game already loads so The Habo Hub can show useful flipping opportunities.
       </p>
     </div>
-    <button class="primary guides" type="button" onclick={openGuides} disabled title="Guide videos are coming soon">Guides</button>
+    <button class="primary guides" type="button" onclick={openGuides}>Guides</button>
   </div>
 
   <div class="status-grid">
@@ -64,11 +64,11 @@
       <strong>{serverName}</strong>
     </article>
     <article>
-      <span>Scan mode</span>
+      <span>Mode</span>
       <strong>{status.PrivateReady ? 'Private' : 'Unavailable'}</strong>
     </article>
     <article>
-      <span>Orders scanned</span>
+      <span>Market orders</span>
       <strong>{orders.toLocaleString()}</strong>
     </article>
     <article>
@@ -86,15 +86,15 @@
       <span class="eyebrow">HOW IT WORKS</span>
       <h2>You still do everything in Albion.</h2>
       <p>
-        Habo Client does not click, search, buy or sell anything for you. You open the marketplace,
-        choose the items and move through the pages. The client only records the market information
+        Habo Client does not click, search, buy or sell anything for you. You use the marketplace
+        normally and move through the pages yourself. The client only uses the market information
         that Albion sends to your computer.
       </p>
     </div>
     <ol>
       <li><b>1</b><span>Open Albion Online</span></li>
       <li><b>2</b><span>Open a marketplace</span></li>
-      <li><b>3</b><span>Browse the items you want to scan</span></li>
+      <li><b>3</b><span>Browse the items you want to check</span></li>
       <li><b>4</b><span>Check the opportunities on The Habo Hub</span></li>
     </ol>
   </div>
@@ -158,13 +158,6 @@
     cursor: pointer;
   }
   .primary:hover { background: var(--orange-bright); }
-  .primary.guides:disabled {
-    cursor: default;
-    border-color: rgba(255, 122, 26, 0.35);
-    background: var(--orange-soft);
-    color: var(--orange-bright);
-    opacity: 1;
-  }
   .status-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
