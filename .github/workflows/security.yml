@@ -18,8 +18,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install libpcap headers
-        run: sudo apt-get update && sudo apt-get install -y libpcap-dev
+      - name: Install Linux build dependencies
+        run: sudo apt-get update && sudo apt-get install -y libpcap-dev libgtk-4-dev libwebkitgtk-6.0-dev
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -40,23 +40,8 @@ jobs:
         run: npm run build
         working-directory: frontend
 
-      - name: Run govulncheck diagnostic
-        shell: bash
-        run: |
-          set +e
-          go run golang.org/x/vuln/cmd/govulncheck@latest ./... > govulncheck.txt 2>&1
-          code=$?
-          echo "$code" > govulncheck.exit
-          cat govulncheck.txt
-          exit 0
-
-      - name: Upload vulnerability report
-        uses: actions/upload-artifact@v6
-        with:
-          name: govulncheck-report
-          path: |
-            govulncheck.txt
-            govulncheck.exit
+      - name: Scan Go dependencies and reachable code
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
   frontend-vulnerabilities:
     name: Frontend dependency audit
