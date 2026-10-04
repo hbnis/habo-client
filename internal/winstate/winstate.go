@@ -8,6 +8,11 @@ import (
 	"path/filepath"
 )
 
+const (
+	minWindowWidth  = 640
+	minWindowHeight = 480
+)
+
 // userConfigDir is a seam for tests; production code always uses
 // os.UserConfigDir.
 var userConfigDir = os.UserConfigDir
@@ -29,8 +34,9 @@ func filePath() (string, error) {
 }
 
 // Load returns the previously saved window bounds. The second return
-// value is false if nothing has been saved yet, or the saved state can't
-// be read - callers should fall back to their own defaults in that case.
+// value is false if nothing has been saved yet, the saved state can't
+// be read, or the saved window is too small to be usable. Callers should
+// fall back to their own defaults in those cases.
 func Load() (Bounds, bool) {
 	path, err := filePath()
 	if err != nil {
@@ -46,7 +52,7 @@ func Load() (Bounds, bool) {
 	if err := json.Unmarshal(data, &b); err != nil {
 		return Bounds{}, false
 	}
-	if b.Width <= 0 || b.Height <= 0 {
+	if b.Width < minWindowWidth || b.Height < minWindowHeight {
 		return Bounds{}, false
 	}
 	return b, true
