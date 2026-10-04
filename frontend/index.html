@@ -3,11 +3,39 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0b0f14" />
-    <title>Habo Client</title>
+    <title>Habo Client Diagnostic</title>
+    <style>
+      html, body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: #ff2b2b;
+        color: #ffffff;
+        font-family: Arial, sans-serif;
+      }
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+      }
+      .box {
+        padding: 40px;
+      }
+      h1 {
+        font-size: 48px;
+        margin: 0 0 16px;
+      }
+      p {
+        font-size: 24px;
+        margin: 0;
+      }
+    </style>
   </head>
   <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
+    <div class="box">
+      <h1>HABO WEBVIEW TEST</h1>
+      <p>If you can see this red screen, the WebView and embedded HTML are working.</p>
+    </div>
   </body>
 </html>
