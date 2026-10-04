@@ -7,6 +7,12 @@
 
 on:
   workflow_call:
+    inputs:
+      version_ref_name:
+        description: Optional explicit version/tag to embed in release builds
+        required: false
+        type: string
+        default: ''
 
 jobs:
   build:
@@ -50,6 +56,8 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Build
+        env:
+          HABO_VERSION: ${{ inputs.version_ref_name }}
         run: make build-${{ matrix.os }}
 
       # Runs only on the linux leg, which already has libpcap-dev and the
