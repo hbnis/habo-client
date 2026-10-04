@@ -1,0 +1,30 @@
+name: Create Habo Client v0.1.1 release
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/create-v0.1.1.yml
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create v0.1.1 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v0.1.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "v0.1.1 already exists"
+            exit 0
+          fi
+
+          gh release create v0.1.1 \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Habo Client v0.1.1" \
+            --notes "Security hardening release. Adds signed automatic updates, trusted HTTPS destination checks, Windows DPAPI protection for the Habo device token, automated vulnerability/dependency checks, and public Safety & Privacy documentation."
