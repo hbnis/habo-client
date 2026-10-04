@@ -9,7 +9,7 @@ jobs:
     uses: ./.github/workflows/build.yml
 
   publish:
-    name: Publish release assets
+    name: Publish updater assets
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -23,6 +23,8 @@ jobs:
         with:
           name: build-darwin
 
+      # Public GitHub releases contain updater payloads only.
+      # User-facing installers stay private and are served through Habonis.com.
       - uses: shogo82148/actions-upload-release-asset@v1
         with:
           upload_url: ${{ github.event.release.upload_url }}
@@ -35,7 +37,3 @@ jobs:
         with:
           upload_url: ${{ github.event.release.upload_url }}
           asset_path: update-darwin-amd64.gz
-      - uses: shogo82148/actions-upload-release-asset@v1
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: albiondata-client-amd64-mac.zip
