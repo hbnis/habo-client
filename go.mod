@@ -12,7 +12,7 @@ require (
 	github.com/nats-io/go-nats v1.7.2
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/viper v1.21.0
-	github.com/wailsapp/wails/v3 v3.0.0-beta.5
+	github.com/wailsapp/wails/v3 v3.0.0-beta.27
 	golang.org/x/sys v0.45.0
 	gopkg.in/toast.v1 v1.0.0-20180812000517-0a84660828b2
 )
@@ -34,7 +34,6 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
-	github.com/subosito/gotenv v1.6.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.51.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
