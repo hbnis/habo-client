@@ -43,6 +43,32 @@ jobs:
       - name: Scan Go dependencies and reachable code
         run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
+  updater-test-diagnostic:
+    name: Signed updater test diagnostic
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Run updater tests and capture output
+        working-directory: third_party/go-githubupdate
+        shell: bash
+        run: |
+          set +e
+          go test ./... > updater-test.txt 2>&1
+          code=$?
+          echo "$code" > updater-test.exit
+          cat updater-test.txt
+          exit 0
+      - uses: actions/upload-artifact@v6
+        with:
+          name: updater-test-diagnostic
+          path: |
+            third_party/go-githubupdate/updater-test.txt
+            third_party/go-githubupdate/updater-test.exit
+
   frontend-vulnerabilities:
     name: Frontend dependency audit
     runs-on: ubuntu-latest
