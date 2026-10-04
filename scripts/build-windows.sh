@@ -2,6 +2,8 @@
 
 set -eo pipefail
 
+VERSION_REF="${HABO_VERSION:-$GITHUB_REF_NAME}"
+
 rm -f rsrc_windows_*
 rm -f habo-client.exe
 rm -f habo-client.*.bak
@@ -18,12 +20,12 @@ export PATH="$PATH:$(go env GOPATH)/bin"
 go-winres make
 
 (cd frontend && npm ci && npm run build)
-env GOOS=windows GOARCH=amd64 go build -ldflags "-s -w -H windowsgui -X main.version=$GITHUB_REF_NAME" -o habo-client.exe albiondata-client.go legacy_startup_windows.go
+env GOOS=windows GOARCH=amd64 go build -ldflags "-s -w -H windowsgui -X main.version=$VERSION_REF" -o habo-client.exe albiondata-client.go legacy_startup_windows.go
 
 go-winres patch habo-client.exe
 
 cd pkg/nsis
-make nsis
+GITHUB_REF_NAME="$VERSION_REF" make nsis
 
 cd ../..
 ls -la habo-client*
