@@ -28,3 +28,38 @@ jobs:
             --target "$GITHUB_SHA" \
             --title "Habo Client v0.1.0" \
             --notes $'First proper Habo Client release.\n\nHighlights:\n• Fixes the tiny/blank saved-window issue.\n• Existing Windows users can move onto automatic updates after installing this version.\n• Removes the old Windows logon startup task through a one-time in-app migration.\n• Habo Client no longer starts automatically with Windows.\n• Guides opens the Habonis membership page.\n• Market helper wording is lighter and clearer.\n\nWindows requires Npcap in WinPcap API-compatible mode for market data capture.'
+
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      version_ref_name: v0.1.0
+
+  publish:
+    name: Publish v0.1.0 assets
+    needs:
+      - create-release
+      - build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          name: build-linux
+      - uses: actions/download-artifact@v6
+        with:
+          name: build-windows
+      - uses: actions/download-artifact@v6
+        with:
+          name: build-darwin
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload v0.1.0 \
+            update-linux-amd64.gz \
+            update-windows-amd64.exe.gz \
+            habo-client-amd64-installer.exe \
+            update-darwin-amd64.gz \
+            albiondata-client-amd64-mac.zip \
+            --clobber \
+            --repo "$GITHUB_REPOSITORY"
