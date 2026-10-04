@@ -170,8 +170,9 @@ Section $(TEXT_SecBase) SecBase
   SetOutPath "$INSTDIR"
   CreateShortCut "$DESKTOP\${PACKAGE_NAME}.lnk" "$INSTDIR\${PACKAGE_EXE}"
 
-; Create Task to run the Client as Admin on Logon
-  Exec 'c:\Windows\System32\schtasks.exe /Create /F /SC ONLOGON /RL HIGHEST /TN "Habo Client" /TR "\"$INSTDIR\${PACKAGE_EXE}\" -minimize"'
+  ; Older installers created a scheduled task that launched Habo Client at
+  ; Windows logon. Remove it on install/upgrade and do not recreate it.
+  nsExec::ExecToLog 'c:\Windows\System32\schtasks.exe /Delete /TN "Habo Client" /F'
 
 SectionEnd
 
@@ -212,7 +213,7 @@ unix2dos_done:
     FileClose $0				; close files
     FileClose $1
     Pop $0
-    Delete $0					; delete original
+    Delete $0						; delete original
 
 FunctionEnd
 
