@@ -39,7 +39,7 @@
   const serverNames = { 0: 'Waiting for Albion', 1: 'Americas', 2: 'Asia', 3: 'Europe' };
   let serverLabel = $derived(serverNames[status.ServerID] ?? 'Unknown');
   let captureLabel = $derived(
-    status.CaptureError ? 'Capture error' : status.CaptureRunning ? 'Scanner running' : 'Waiting for Albion'
+    status.CaptureError ? 'Capture error' : status.CaptureRunning ? 'Active' : 'Waiting for Albion'
   );
 
   function openDriverHelp(event) {
@@ -95,7 +95,7 @@
     {#if status.HaboConnected}
       <div class="account-name">
         <span class="account-dot"></span>
-        <div><b>{status.HaboDisplayName || 'Habo Hub user'}</b><small>{status.HaboPremium ? 'Premium · Private scans available' : 'Free account · Premium required for private scans'}</small></div>
+        <div><b>{status.HaboDisplayName || 'Habo Hub user'}</b><small>{status.HaboPremium ? 'Premium · Private mode available' : 'Free account · Premium required for private mode'}</small></div>
       </div>
       <button class="account-secondary" type="button" onclick={disconnectHabo}>Disconnect</button>
     {:else if status.HaboPairing && status.HaboConnectURL}
@@ -105,7 +105,7 @@
       {/if}
       <button class="account-primary" type="button" onclick={finishPairing}>Continue in browser</button>
     {:else}
-      <p class="pair-copy">Connect your Habo Hub account to use Habo Client private market scanning.</p>
+      <p class="pair-copy">Connect your Habo Hub account to use Habo Client private mode.</p>
       <button class="account-primary" type="button" onclick={connectHabo}>Connect Habo Hub</button>
     {/if}
 
@@ -116,15 +116,15 @@
 
   <section class="mode-card">
     <div class="section-head">
-      <span>PRIVATE SCANNING</span>
+      <span>PRIVATE MODE</span>
       <small class:connected={status.PrivateReady}>{status.PrivateReady ? 'ACTIVE' : status.HaboConnected ? 'PREMIUM' : 'LOCKED'}</small>
     </div>
     {#if status.PrivateReady}
-      <p>Scanned market data goes only to your connected Habo Hub account.</p>
+      <p>Market data goes only to your connected Habo Hub account.</p>
     {:else if status.HaboConnected}
-      <p>Private market scanning requires Habo Hub Premium.</p>
+      <p>Private mode requires Habo Hub Premium.</p>
     {:else}
-      <p>Connect your Habo Hub account to enable private market scanning.</p>
+      <p>Connect your Habo Hub account to enable private mode.</p>
     {/if}
   </section>
 
