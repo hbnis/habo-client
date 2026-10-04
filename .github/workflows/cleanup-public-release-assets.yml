@@ -1,0 +1,27 @@
+name: Cleanup public release assets
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/cleanup-public-release-assets.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Keep only updater payloads public on v0.1.0
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for asset in habo-client-amd64-installer.exe albiondata-client-amd64-mac.zip; do
+            if gh release view v0.1.0 --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' | grep -qx "$asset"; then
+              gh release delete-asset v0.1.0 "$asset" --repo "$GITHUB_REPOSITORY" --yes
+            else
+              echo "$asset already absent"
+            fi
+          done
