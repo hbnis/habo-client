@@ -1,0 +1,30 @@
+name: Bootstrap Habo Client v0.1.0
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/bootstrap-v0.1.0.yml
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create v0.1.0 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v0.1.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "v0.1.0 already exists"
+            exit 0
+          fi
+
+          gh release create v0.1.0 \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Habo Client v0.1.0" \
+            --notes $'First proper Habo Client release.\n\nHighlights:\n• Fixes the tiny/blank saved-window issue.\n• Existing Windows users can move onto automatic updates after installing this version.\n• Removes the old Windows logon startup task through a one-time in-app migration.\n• Habo Client no longer starts automatically with Windows.\n• Guides opens the Habonis membership page.\n• Market helper wording is lighter and clearer.\n\nWindows requires Npcap in WinPcap API-compatible mode for market data capture.'
