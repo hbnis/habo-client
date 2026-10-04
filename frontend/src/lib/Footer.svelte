@@ -14,6 +14,11 @@
     event.preventDefault();
     Browser.OpenURL(url);
   }
+
+  function formattedVersion(value) {
+    if (!value) return 'dev';
+    return value.startsWith('v') ? value : `v${value}`;
+  }
 </script>
 
 <footer class="footer">
@@ -22,7 +27,7 @@
     <a href="https://discord.gg/habo" onclick={(event) => open(event, 'https://discord.gg/habo')}>Discord</a>
     <a href="https://github.com/ao-data/albiondata-client" onclick={(event) => open(event, 'https://github.com/ao-data/albiondata-client')}>AODP foundation</a>
   </div>
-  <span>Habo Client v{version || 'dev'}</span>
+  <span>Habo Client {formattedVersion(version)}</span>
 </footer>
 
 <style>
