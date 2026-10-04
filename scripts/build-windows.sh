@@ -20,15 +20,18 @@ go-winres make
 
 (cd frontend && npm ci && npm run build)
 
-# Build the real Habo window/tray shell, but temporarily remove background
-# startup work. This isolates whether packet capture, account refresh,
-# the driver check, or the updater interferes with WebView startup.
+# Start from the real client source, then strip background startup and the
+# window/tray lifecycle down to the same basic shape as the minimal frontend
+# diagnostic that renders correctly on the affected Windows machine.
 cp albiondata-client.go diagnostic-full-shell.go
 python3 - <<'PY'
 from pathlib import Path
+import re
 
 p = Path("diagnostic-full-shell.go")
 s = p.read_text()
+
+# Disable background systems first.
 replacements = [
     ("\tgo applyHaboAccountState(client.RefreshHaboAccount())\n", "\t// diagnostic: account refresh disabled\n"),
     ("\tgo func() {\n\t\ttime.Sleep(3 * time.Second)\n\t\tcheckCaptureDriver()\n\t}()\n", "\t// diagnostic: capture-driver startup check disabled\n"),
@@ -39,6 +42,47 @@ for old, new in replacements:
     if old not in s:
         raise SystemExit(f"expected startup block not found: {old!r}")
     s = s.replace(old, new, 1)
+
+# Replace the full window/tray lifecycle with a plain visible window while
+# keeping the real frontend, service bindings, and the rest of the package.
+minimal_dashboard = r'''func runDashboardApp() {
+	app := application.New(application.Options{
+		Name:        "Habo Client Shell Diagnostic",
+		Description: "Real Habo frontend with stripped window lifecycle",
+		Services: []application.Service{
+			application.NewService(&dashboard.DashboardService{}),
+		},
+		Assets: application.AssetOptions{
+			Handler: application.AssetFileServerFS(assets),
+		},
+	})
+
+	dashboardWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title:  "Habo Client SHELL TEST",
+		Name:   "dashboard",
+		Width:  900,
+		Height: 600,
+		Hidden: false,
+		URL:    "/",
+	})
+
+	dashboardWindowMu.Lock()
+	dashboardWindowRef = dashboardWindow
+	dashboardWindowMu.Unlock()
+
+	if err := app.Run(); err != nil {
+		log.Error(err)
+		os.Exit(1)
+	}
+}
+
+'''
+
+pattern = r'func runDashboardApp\(\) \{.*?\n\}\n\n(?=func setupTray)'
+s, n = re.subn(pattern, minimal_dashboard, s, count=1, flags=re.S)
+if n != 1:
+    raise SystemExit(f"could not replace runDashboardApp, matches={n}")
+
 p.write_text(s)
 PY
 
