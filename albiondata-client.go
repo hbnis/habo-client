@@ -228,7 +228,7 @@ func runDashboardApp() {
 		Name:   "dashboard",
 		Width:  900,
 		Height: 600,
-		Hidden: true,
+		Hidden: false,
 		URL:    "/",
 	}
 	if saved, ok := winstate.Load(); ok {
