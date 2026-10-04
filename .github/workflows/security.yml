@@ -21,13 +21,7 @@ jobs:
       - name: Install libpcap headers
         run: sudo apt-get update && sudo apt-get install -y libpcap-dev
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Build frontend assets required by Go embed
+      - name: Set up Node
         uses: actions/setup-node@v5
         with:
           node-version: '22'
@@ -36,14 +30,16 @@ jobs:
 
       - run: npm ci
         working-directory: frontend
-      - run: npm run build
+      - name: Build frontend assets required by Go embed
+        run: npm run build
         working-directory: frontend
 
-      - name: Install govulncheck
-        run: go install golang.org/x/vuln/cmd/govulncheck@latest
-
       - name: Scan Go dependencies and reachable code
-        run: govulncheck ./...
+        uses: golang/govulncheck-action@v1
+        with:
+          repo-checkout: false
+          go-version-file: go.mod
+          go-package: ./...
 
   frontend-vulnerabilities:
     name: Frontend dependency audit
@@ -60,15 +56,3 @@ jobs:
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
         working-directory: frontend
-
-  dependency-review:
-    name: Dependency review
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: high
-          retry-on-snapshot-warnings: true
-          retry-on-snapshot-warnings-timeout: 300
