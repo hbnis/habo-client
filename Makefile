@@ -13,13 +13,13 @@ validate-fmt:
 	scripts/validate-fmt.sh
 
 build-windows:
-	go mod download github.com/wailsapp/wails/v3
+	go mod tidy
 	scripts/build-windows.sh
 
 build-linux:
-	go mod download github.com/wailsapp/wails/v3
+	go mod tidy
 	scripts/build-linux.sh
 
 build-darwin:
-	go mod download github.com/wailsapp/wails/v3
+	go mod tidy
 	scripts/build-darwin.sh
