@@ -12,6 +12,7 @@ jobs:
     uses: ./.github/workflows/build.yml
     with:
       version_ref_name: ${{ github.event.release.tag_name }}
+      upload_artifacts: true
 
   publish:
     name: Sign and publish updater assets
