@@ -14,7 +14,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/wailsapp/wails/v3 v3.0.0-beta.5
 	golang.org/x/sys v0.45.0
-	gopkg.in/toast.v1 v1.0.0-20180812000517-0a84660828b2e6a1b7150f
+	gopkg.in/toast.v1 v1.0.0-20180812000517-0a84660828b2
 )
 
 require (
