@@ -1,9 +1,10 @@
 # .github/workflows/build.yml
 #
 # Reusable build workflow, shared by test-build.yml (push/PR) and
-# release.yml (release published). Normal CI builds everything for validation
-# but does not publish downloadable binaries. Release callers may opt in to
-# short-lived updater payload artifacts used by the signing/publish job.
+# release.yml (release published). CI keeps the Linux validation leg and
+# Windows client build, but does not build macOS because Habo Client is
+# Windows-only. Release callers may opt in to short-lived updater payload
+# artifacts used by the signing/publish job.
 
 on:
   workflow_call:
@@ -33,9 +34,6 @@ jobs:
           - os: windows
             runner: ubuntu-latest
             release_artifacts: update-windows-amd64.exe.gz
-          - os: darwin
-            runner: macos-latest
-            release_artifacts: update-darwin-amd64.gz
     steps:
       - uses: actions/checkout@v6
 
