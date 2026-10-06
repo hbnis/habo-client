@@ -22,23 +22,9 @@ partial match - if the exact filename isn't there, it's
 `ErrorNoBinary` ("No binary for the update found"), regardless of
 whether *some* compatible binary exists in the release.
 
-This is why macOS is always built as amd64 (see build-and-release.md)
-even on arm64 hardware: a real end user runs the shipped
-`albiondata-client-amd64-mac.zip` under Rosetta 2, so their process's
-`runtime.GOARCH` reports `amd64` at runtime and matches
-`update-darwin-amd64.gz`, the only darwin asset any release actually
-publishes. But a **locally built test binary** on Apple Silicon, built
-with a plain `go build` (no `GOARCH=amd64` override), links natively
-for arm64 - `runtime.GOARCH` reports `arm64`, the updater looks for
-`update-darwin-arm64.gz`, and that asset doesn't exist in any release.
-Confirmed exactly this way once already: `file
-albiondata-client-pre-gui` showed `Mach-O 64-bit executable arm64`,
-which is why its self-update failed even though the target release had
-a perfectly good `update-darwin-amd64.gz`. If this happens again,
-rebuild the local binary with the same amd64-forcing flags
-`scripts/build-darwin.sh` uses, rather than adding an arm64 release
-target - see build-and-release.md for why arm64 was deliberately not
-added.
+Habo Client is shipped for Windows only. Release automation therefore
+publishes the Windows updater payload for users; there is no macOS
+updater asset or macOS build target.
 
 ## Target repo is compile-time hardcoded
 

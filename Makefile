@@ -1,4 +1,4 @@
-.PHONY: run frontend fmt validate-fmt build-windows build-linux build-darwin
+.PHONY: run frontend fmt validate-fmt build-windows build-linux
 
 run:
 	scripts/run.sh
@@ -17,6 +17,3 @@ build-windows:
 
 build-linux:
 	scripts/build-linux.sh
-
-build-darwin:
-	scripts/build-darwin.sh

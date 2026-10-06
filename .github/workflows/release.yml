@@ -35,19 +35,13 @@ jobs:
         with:
           name: build-windows
           path: dist/windows
-      - uses: actions/download-artifact@v6
-        with:
-          name: build-darwin
-          path: dist/darwin
-
       - name: Sign updater payloads
         env:
           HABO_UPDATE_SIGNING_KEY: ${{ secrets.HABO_UPDATE_SIGNING_KEY }}
         run: |
           go run ./scripts/sign-updates.go \
             dist/linux/update-linux-amd64.gz \
-            dist/windows/update-windows-amd64.exe.gz \
-            dist/darwin/update-darwin-amd64.gz
+            dist/windows/update-windows-amd64.exe.gz
 
       # Public GitHub releases contain updater payloads and detached signatures
       # only. User-facing installers stay private and are served through
@@ -62,6 +56,4 @@ jobs:
             dist/linux/update-linux-amd64.gz.sig \
             dist/windows/update-windows-amd64.exe.gz \
             dist/windows/update-windows-amd64.exe.gz.sig \
-            dist/darwin/update-darwin-amd64.gz \
-            dist/darwin/update-darwin-amd64.gz.sig \
             --clobber

@@ -2,7 +2,7 @@
 
 ## The single-file build convention (read this before adding a file to the repo root)
 
-Every build script (`scripts/build-{windows,linux,darwin}.sh`,
+Every supported build script (`scripts/build-{windows,linux}.sh`,
 `scripts/run.sh`) and `buildall_main.sh` builds with:
 
 ```
@@ -28,7 +28,6 @@ make fmt              # goimports -w across the repo (vendor/-safe, see below)
 make validate-fmt     # goimports -l, non-zero exit if anything's unformatted
 make build-windows    # cross-compiles from any OS; needs nsis, go-winres
 make build-linux      # native on Linux; needs libpcap-dev, patchelf, gtk4/webkitgtk-6.0 dev headers
-make build-darwin     # native on macOS; forces amd64 (see below), needs libpcap headers (Xcode CLT)
 
 go build ./...        # compile-check everything (needs frontend/dist to exist first, see below)
 go vet ./...
@@ -53,38 +52,18 @@ subdirectories when given a bare directory argument, so a `grep -v
 a non-vendor directory that contains `vendor/` as a child. Don't
 "simplify" this back to the `go list` form.
 
-## macOS: always amd64, even natively
+## CI: one reusable workflow, two callers
 
-`scripts/build-darwin.sh` and the darwin leg of CI force `GOARCH=amd64`
-with `CC="clang -arch x86_64"`/`CGO_LDFLAGS="-arch x86_64"`, even
-though GitHub's `macos-latest` runners (and most current dev machines)
-are arm64 hardware. This is deliberate, not a leftover - there is no
-native arm64 build target, on purpose (see self-update.md for why this
-matters beyond just "smaller binary"). If you build a local test binary
-with a plain `go build` on Apple Silicon without these flags, it'll be
-a native arm64 binary that behaves differently from what's actually
-shipped - see self-update.md for a concrete way this bites.
+`.github/workflows/build.yml` is a `workflow_call` reusable workflow with
+Linux and Windows legs. Linux is retained for inexpensive validation,
+`go vet` and `go test`; Windows is the shipped Habo Client build.
+`test-build.yml` (push/PR) and `release.yml` (on a GitHub release being
+created) both call it. There is intentionally no macOS runner or macOS
+release artifact because Habo Client is Windows-only.
 
-## CI: one reusable workflow, three callers
-
-`.github/workflows/build.yml` is a `workflow_call` reusable workflow: a
-matrix over `{linux, windows, darwin}`, each leg just running `make
-build-<os>` and uploading whatever that produces as a workflow
-artifact. `test-build.yml` (push/PR) and `release.yml` (on a GitHub
-release being created) both call it - `release.yml` adds a `publish`
-job that downloads the artifacts and attaches them to the release.
-
-This exists because the three build paths used to be duplicated almost
-verbatim across two workflow files, and drifted: a fix to
-`scripts/build-darwin.sh` (adding the frontend build step) was never
-applied to the *inlined* darwin steps in the workflow YAML, because
-those steps didn't call the script at all - they ran a raw `go build`
-directly. That meant darwin CI was very likely failing outright (no
-`frontend/dist` -> the embed directive fails to compile) for some
-unknown period before anyone caught it. If you need to change how an
-OS builds, change the `scripts/build-<os>.sh` script - never add
-build steps directly to a workflow YAML again, that's exactly how this
-happened.
+If you need to change how a supported OS builds, change the matching
+`scripts/build-<os>.sh` script rather than duplicating build commands
+inside workflow YAML.
 
 The linux leg also runs `go vet ./...` and `go test ./...` (it already
 has libpcap-dev, and the frontend built, from the build step above -
@@ -122,8 +101,6 @@ reappears (e.g. from running `go mod vendor` locally), it's gitignored
 ## What no longer exists, and why
 
 `Dockerfile`, `Dockerfile.build.darwin`, and `docker-compose.yml` were
-deleted - they were a CircleCI/osxcross-era Linux-hosted
-cross-compilation setup (Go 1.14/1.16 base images) for building macOS
-binaries from Linux, superseded once macOS builds moved to running
-natively on a real `macos-latest` runner. Nothing referenced them by
-the time they were removed.
+deleted as obsolete legacy build infrastructure. The remaining macOS
+build script and CI leg were later removed as well because Habo Client
+is Windows-only.
