@@ -19,9 +19,10 @@ type operationJoinResponse struct {
 func (op operationJoinResponse) Process(state *albionState) {
 	log.Debugf("Got JoinResponse operation...")
 
-	// Reset the AODataServerID here. This leads to a fresh execution
-	// of SetServerID() incase the player switched servers
-	state.AODataServerID = 0
+	// Keep the last valid Albion server ID. The packet listener refreshes it
+	// from the source IP on every game packet, including real server switches.
+	// Clearing it here created a short window where valid market uploads were
+	// sent with server ID 0 and rejected by The Habo Hub.
 
 	location := normalizeLocationID(op.Location)
 	if location != "" {
