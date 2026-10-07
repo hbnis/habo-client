@@ -116,6 +116,22 @@ func (state albionState) GetServer() (int, string) {
 	return serverID, AODataIngestBaseURL
 }
 
+
+func (state *albionState) ServerIDForUpload() int {
+	if state == nil {
+		return 0
+	}
+
+	// Re-evaluate the latest game-server IP first. GetServer falls back to the
+	// last valid stored server when the current packet is from an unrelated IP,
+	// but a recognized Albion IP overrides stale state after a real server switch.
+	serverID, _ := state.GetServer()
+	if serverID < 1 || serverID > 3 {
+		return 0
+	}
+	return serverID
+}
+
 // RecordMarketDataRequest notes that a market data request was just sent,
 // and re-arms the encryption notification guard so a new request can
 // trigger a new notification even if a prior one already fired.

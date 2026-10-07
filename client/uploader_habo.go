@@ -30,6 +30,12 @@ func (u *haboUploader) sendToIngest(body []byte, topic string, state *albionStat
 		return
 	}
 
+	serverID := state.ServerIDForUpload()
+	if serverID == 0 {
+		log.Warnf("Habo private %s upload skipped because the Albion server could not be identified yet.", topic)
+		return
+	}
+
 	req, err := http.NewRequest("POST", u.baseURL+"/"+topic, bytes.NewReader(body))
 	if err != nil {
 		log.Errorf("Could not create Habo private ingest request: %v", err)
@@ -38,7 +44,7 @@ func (u *haboUploader) sendToIngest(body []byte, topic string, state *albionStat
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", fmt.Sprintf("habo-client/%s", version))
-	req.Header.Set("X-Habo-Server-Id", fmt.Sprintf("%d", state.AODataServerID))
+	req.Header.Set("X-Habo-Server-Id", fmt.Sprintf("%d", serverID))
 	if identifier != "" {
 		req.Header.Set("X-Habo-Identifier", identifier)
 	}
