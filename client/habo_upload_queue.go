@@ -253,6 +253,7 @@ func (q *haboUploadQueue) enqueue(body []byte, topic string, serverID int, ident
 
 	q.mu.Lock()
 	q.jobs = append(q.jobs, job)
+	q.diskBytes += job.SizeBytes
 	q.sortJobsLocked()
 	q.pruneLocked(time.Now())
 	depth := len(q.jobs)
@@ -291,7 +292,6 @@ func (q *haboUploadQueue) persist(job *haboUploadJob) error {
 	}
 	job.FilePath = path
 	job.SizeBytes = int64(len(data))
-	q.diskBytes += job.SizeBytes
 	return nil
 }
 
