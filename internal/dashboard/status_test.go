@@ -82,6 +82,7 @@ func TestGetStatus_ReflectsAllSetters(t *testing.T) {
 	resetStatusForTest()
 
 	SetVersionInfo("1.2.3", "1.3.0")
+	SetUpdateFailed(true)
 	SetCaptureRunning(true)
 	SetServer(3, "https+pow://pow.europe.albion-online-data.com")
 
@@ -89,11 +90,31 @@ func TestGetStatus_ReflectsAllSetters(t *testing.T) {
 	want := Status{
 		Version:         "1.2.3",
 		UpdateAvailable: "1.3.0",
+		UpdateFailed:    true,
 		CaptureRunning:  true,
 		ServerID:        3,
 		IngestBaseURL:   "https+pow://pow.europe.albion-online-data.com",
 	}
 	if got != want {
 		t.Fatalf("GetStatus() = %+v, want %+v", got, want)
+	}
+}
+
+
+func TestSetUpdateFailed_EmitsOnChange(t *testing.T) {
+	resetStatusForTest()
+
+	var got []Status
+	OnStatusChange(func(s Status) { got = append(got, s) })
+
+	SetUpdateFailed(true)
+	SetUpdateFailed(true)
+	SetUpdateFailed(false)
+
+	if len(got) != 2 {
+		t.Fatalf("expected 2 emits, got %d: %+v", len(got), got)
+	}
+	if !got[0].UpdateFailed || got[1].UpdateFailed {
+		t.Fatalf("unexpected emitted statuses: %+v", got)
 	}
 }
