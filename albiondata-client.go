@@ -505,7 +505,6 @@ func startUpdater() {
 func tryUpdate(u *updater.Updater) bool {
 	maxTries := 2
 	latestAvailable := ""
-	dashboard.SetUpdateFailed(false)
 
 	for i := 0; i < maxTries; i++ {
 		if available, checkErr := u.CheckUpdateAvailable(); checkErr == nil {
