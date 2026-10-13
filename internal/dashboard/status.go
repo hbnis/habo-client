@@ -8,6 +8,7 @@ import "sync"
 type Status struct {
 	Version            string
 	UpdateAvailable    string
+	UpdateFailed       bool
 	CaptureRunning     bool
 	CaptureError       bool
 	ServerID           int
@@ -61,6 +62,24 @@ func SetVersionInfo(version, updateAvailable string) {
 	next := status
 	next.Version = version
 	next.UpdateAvailable = updateAvailable
+	changed := next != status
+	if changed {
+		status = next
+	}
+	emit := statusEmit
+	statusMu.Unlock()
+
+	if changed && emit != nil {
+		emit(next)
+	}
+}
+
+// SetUpdateFailed records that an update was available but automatic
+// replacement failed after the updater exhausted its retry attempts.
+func SetUpdateFailed(failed bool) {
+	statusMu.Lock()
+	next := status
+	next.UpdateFailed = failed
 	changed := next != status
 	if changed {
 		status = next

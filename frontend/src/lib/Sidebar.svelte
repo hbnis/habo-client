@@ -7,6 +7,7 @@
   let status = $state({
     Version: '',
     UpdateAvailable: '',
+    UpdateFailed: false,
     CaptureRunning: false,
     CaptureError: false,
     ServerID: 0,
@@ -141,9 +142,12 @@
   {/if}
 
   {#if status.UpdateAvailable}
-    <section class="update">
-      <span>UPDATE AVAILABLE</span>
+    <section class="update" class:failed={status.UpdateFailed}>
+      <span>{status.UpdateFailed ? 'UPDATE FAILED' : 'UPDATE AVAILABLE'}</span>
       <b>{status.UpdateAvailable}</b>
+      {#if status.UpdateFailed}
+        <small>Open the main panel for recovery steps.</small>
+      {/if}
     </section>
   {/if}
 
@@ -330,6 +334,17 @@
   .warning span { color: var(--text-muted); font-size: 0.68rem; line-height: 1.45; }
   .warning a { color: var(--orange-bright); font-size: 0.7rem; font-weight: 800; text-decoration: none; }
   .update b { font-size: 0.78rem; }
+  .update small {
+    color: var(--text-muted);
+    font-size: 0.64rem;
+    line-height: 1.4;
+  }
+  .update.failed {
+    border-color: rgba(225, 94, 74, 0.42);
+    background: linear-gradient(145deg, rgba(225, 94, 74, 0.10), rgba(255, 122, 26, 0.06));
+  }
+  .update.failed span { color: #ff9b79; }
+  .update.failed b { color: #fff1ed; }
   .hub-button {
     margin-top: auto;
     border: 1px solid rgba(255, 122, 26, 0.4);

@@ -6,6 +6,8 @@
   let status = $state({
     CaptureRunning: false,
     CaptureError: false,
+    UpdateAvailable: '',
+    UpdateFailed: false,
     ServerID: 0,
     UploadMode: 'private',
     PrivateReady: false,
@@ -39,9 +41,26 @@
   function openGuides() {
     Browser.OpenURL('https://www.youtube.com/@Habonis/membership');
   }
+
+  function openLatestInstaller() {
+    Browser.OpenURL('https://habonis.com/account');
+  }
 </script>
 
 <section class="market-panel">
+  {#if status.UpdateFailed && status.UpdateAvailable}
+    <div class="update-failure" role="alert">
+      <div>
+        <span>AUTOMATIC UPDATE FAILED</span>
+        <p>
+          <strong>Update available: {status.UpdateAvailable}.</strong>
+          Automatic update failed. Restart Habo Client as Administrator or download the latest installer.
+        </p>
+      </div>
+      <button type="button" onclick={openLatestInstaller}>Download latest installer</button>
+    </div>
+  {/if}
+
   <div class="hero">
     <div>
       <span class="eyebrow">MARKET HELPER</span>
@@ -114,6 +133,52 @@
     padding: 2rem;
     overflow-y: auto;
   }
+  .update-failure {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.1rem;
+    border: 1px solid rgba(225, 94, 74, 0.62);
+    border-radius: 12px;
+    background:
+      linear-gradient(90deg, rgba(225, 94, 74, 0.16), rgba(255, 122, 26, 0.10)),
+      var(--bg-raised);
+    box-shadow: 0 0 0 1px rgba(255, 122, 26, 0.06) inset;
+  }
+  .update-failure > div {
+    min-width: 0;
+  }
+  .update-failure span {
+    color: #ff9b79;
+    font-size: 0.66rem;
+    font-weight: 900;
+    letter-spacing: 0.11em;
+  }
+  .update-failure p {
+    margin: 0.3rem 0 0;
+    color: #ffd1c8;
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+  .update-failure strong {
+    color: #fff1ed;
+  }
+  .update-failure button {
+    flex: none;
+    border: 1px solid rgba(255, 122, 26, 0.65);
+    border-radius: 9px;
+    padding: 0.68rem 0.85rem;
+    background: var(--orange);
+    color: #15100c;
+    font-size: 0.72rem;
+    font-weight: 900;
+    cursor: pointer;
+  }
+  .update-failure button:hover {
+    background: var(--orange-bright);
+  }
+
   .hero {
     display: flex;
     align-items: flex-end;
@@ -239,6 +304,8 @@
   }
   @media (max-width: 760px) {
     .market-panel { padding: 1rem; }
+    .update-failure { align-items: stretch; flex-direction: column; }
+    .update-failure button { width: 100%; }
     .hero { align-items: stretch; flex-direction: column; }
     .primary { width: 100%; }
     .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
