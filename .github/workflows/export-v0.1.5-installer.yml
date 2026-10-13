@@ -1,0 +1,44 @@
+name: Export Habo Client v0.1.5 installer
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/export-v0.1.5-installer.yml
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    name: Build Windows installer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build v0.1.5 Windows installer
+        env:
+          HABO_VERSION: v0.1.5
+        run: make build-windows
+
+      - name: Upload website installer artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: habo-client-v0.1.5-installer
+          path: habo-client-amd64-installer.exe
+          if-no-files-found: error
+          retention-days: 1
