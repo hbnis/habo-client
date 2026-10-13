@@ -475,6 +475,7 @@ func openLogFile() {
 
 func startUpdater() {
 	dashboard.SetVersionInfo(version, "")
+	dashboard.SetUpdateFailed(false)
 	dashboard.SetCustomPublicIngest(client.ConfigGlobal.PublicIngestBaseUrls != "https+pow://albion-online-data.com")
 
 	releaseVersion := regexp.MustCompile("^v?[0-9]+\\.[0-9]+\\.[0-9]+$")
@@ -503,9 +504,16 @@ func startUpdater() {
 // Returns true if an update was successfully applied.
 func tryUpdate(u *updater.Updater) bool {
 	maxTries := 2
+	latestAvailable := ""
+	dashboard.SetUpdateFailed(false)
+
 	for i := 0; i < maxTries; i++ {
 		if available, checkErr := u.CheckUpdateAvailable(); checkErr == nil {
+			latestAvailable = available
 			dashboard.SetVersionInfo(version, available)
+			if available == "" {
+				dashboard.SetUpdateFailed(false)
+			}
 		}
 
 		updated, err := u.BackgroundUpdater()
@@ -514,13 +522,23 @@ func tryUpdate(u *updater.Updater) bool {
 			if i < maxTries-1 {
 				log.Info("Will try again in 60 seconds. You may need to run the client as Administrator.")
 				time.Sleep(time.Second * 60)
+				continue
 			}
-			continue
+
+			if latestAvailable != "" {
+				dashboard.SetUpdateFailed(true)
+				log.Warnf("Automatic update to %s failed. Restart Habo Client as Administrator or download the latest installer.", latestAvailable)
+				showDashboardWindow()
+			}
+			return false
 		}
 		if updated {
+			dashboard.SetUpdateFailed(false)
 			return true
 		}
-		// No update available, no need to retry
+
+		// No update available, no need to retry.
+		dashboard.SetUpdateFailed(false)
 		return false
 	}
 	return false
