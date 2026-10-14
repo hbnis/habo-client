@@ -1,0 +1,101 @@
+name: Create and publish Habo Client v0.1.8
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/create-v0.1.8.yml
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      version_ref_name: v0.1.8
+      upload_artifacts: true
+
+  installer:
+    name: Export v0.1.8 Windows installer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build v0.1.8 Windows installer
+        env:
+          HABO_VERSION: v0.1.8
+        run: make build-windows
+
+      - name: Upload website installer artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: habo-client-v0.1.8-installer
+          path: habo-client-amd64-installer.exe
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Sign and publish v0.1.8 updater assets
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/download-artifact@v6
+        with:
+          name: build-linux
+          path: dist/linux
+
+      - uses: actions/download-artifact@v6
+        with:
+          name: build-windows
+          path: dist/windows
+
+      - name: Sign updater payloads
+        env:
+          HABO_UPDATE_SIGNING_KEY: ${{ secrets.HABO_UPDATE_SIGNING_KEY }}
+        run: |
+          go run ./scripts/sign-updates.go \
+            dist/linux/update-linux-amd64.gz \
+            dist/windows/update-windows-amd64.exe.gz
+
+      - name: Create release and upload signed updater assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view v0.1.8 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create v0.1.8 \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "Habo Client v0.1.8" \
+              --notes "Security hardening release. Habo Client now restricts authenticated Habo Hub requests and private ingest uploads to the trusted Habo Hub origin and refuses cross-origin redirects that could expose the device bearer token. Signed updater validation and regression coverage were also strengthened."
+          fi
+
+          gh release upload v0.1.8 \
+            dist/linux/update-linux-amd64.gz \
+            dist/linux/update-linux-amd64.gz.sig \
+            dist/windows/update-windows-amd64.exe.gz \
+            dist/windows/update-windows-amd64.exe.gz.sig \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
