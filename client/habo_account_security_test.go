@@ -1,6 +1,7 @@
 package client
 
 import (
+	"net/http"
 	"os"
 	"testing"
 )
@@ -97,5 +98,47 @@ func TestHaboUpdateRestartEnvironmentUsesCurrentToken(t *testing.T) {
 	want := haboRestartTokenEnvKey + "=restart-token-abcdefghijklmnopqrstuvwxyz123456"
 	if got != want {
 		t.Fatalf("restart environment = %q, want %q", got, want)
+	}
+}
+
+
+func TestHaboRedirectPolicyRejectsCrossOrigin(t *testing.T) {
+	origin, err := http.NewRequest(http.MethodGet, "https://habonis.com/api/client/session", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sameOrigin, err := http.NewRequest(http.MethodGet, "https://habonis.com/api/client/session?check=1", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	foreign, err := http.NewRequest(http.MethodGet, "https://evil.example/steal", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := sameOriginRedirectPolicy(sameOrigin, []*http.Request{origin}); err != nil {
+		t.Fatalf("same-origin redirect rejected: %v", err)
+	}
+	if err := sameOriginRedirectPolicy(foreign, []*http.Request{origin}); err == nil {
+		t.Fatal("cross-origin redirect accepted for an authenticated Habo request")
+	}
+}
+
+func TestTrustedHaboIngestTargetRejectsCredentialExfiltration(t *testing.T) {
+	t.Setenv("HABO_HUB_URL", "https://habonis.com")
+
+	if !trustedHaboIngestTarget("habo+https://habonis.com/api/client/ingest") {
+		t.Fatal("trusted production ingest target was rejected")
+	}
+	for _, target := range []string{
+		"habo+https://evil.example/api/client/ingest",
+		"habo+https://habonis.com.evil.example/api/client/ingest",
+		"habo+http://habonis.com/api/client/ingest",
+		"habo+https://habonis.com/api/client/ingest?next=https://evil.example",
+		"habo+https://habonis.com/other",
+	} {
+		if trustedHaboIngestTarget(target) {
+			t.Fatalf("untrusted Habo target accepted: %s", target)
+		}
 	}
 }

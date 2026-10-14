@@ -14,7 +14,11 @@ type haboUploader struct {
 
 func newHaboUploader(target string) uploader {
 	baseURL := strings.TrimPrefix(target, "habo+")
-	httpClient := &http.Client{Transport: &http.Transport{}, Timeout: httpUploadTimeout}
+	httpClient := &http.Client{
+		Transport:     &http.Transport{},
+		Timeout:       httpUploadTimeout,
+		CheckRedirect: sameOriginRedirectPolicy,
+	}
 	queueDir, err := haboUploadQueueDir()
 	if err != nil {
 		log.Warnf("Could not resolve Habo upload queue directory; uploads will remain in memory only: %v", err)

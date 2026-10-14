@@ -63,7 +63,7 @@ type haboSessionResponse struct {
 var (
 	haboMu    sync.RWMutex
 	haboToken string
-	haboHTTP  = &http.Client{Timeout: 15 * time.Second}
+	haboHTTP  = &http.Client{Timeout: 15 * time.Second, CheckRedirect: sameOriginRedirectPolicy}
 )
 
 func haboHubURL() string {
@@ -115,6 +115,20 @@ func validateHaboBaseURL(raw string) (string, error) {
 
 func isLocalHaboDevHost(host string) bool {
 	return host == "localhost" || host == "127.0.0.1" || host == "::1"
+}
+
+func sameOriginRedirectPolicy(req *http.Request, via []*http.Request) error {
+	if len(via) == 0 {
+		return nil
+	}
+	if len(via) >= 10 {
+		return errors.New("too many Habo Hub redirects")
+	}
+	origin := via[0].URL
+	if req.URL.Scheme != origin.Scheme || !strings.EqualFold(req.URL.Host, origin.Host) {
+		return fmt.Errorf("refusing Habo Hub redirect to a different origin: %s", req.URL.Redacted())
+	}
+	return nil
 }
 
 func trustedHaboResponseURL(raw, expectedPath string, allowQuery bool) (string, error) {
