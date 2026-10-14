@@ -83,6 +83,11 @@ func main() {
 	}
 
 	log.AddHook(dashboard.NewLogHook())
+	if restored, err := client.RestoreHaboTokenAfterUpdate(); err != nil {
+		log.Warnf("Could not restore Habo Hub connection after update restart: %v", err)
+	} else if restored {
+		log.Info("Restored Habo Hub connection after update restart.")
+	}
 	dashboard.SetUploadMode(client.GetUploadMode(), false)
 	go applyHaboAccountState(client.RefreshHaboAccount())
 
@@ -560,6 +565,10 @@ func restartProcess() {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		cmd.Stdin = os.Stdin
+		cmd.Env = os.Environ()
+		if restartTokenEnv := client.HaboUpdateRestartEnvironment(); restartTokenEnv != "" {
+			cmd.Env = append(cmd.Env, restartTokenEnv)
+		}
 
 		err = cmd.Start()
 		if err != nil {
@@ -570,13 +579,18 @@ func restartProcess() {
 		log.Info("New process started, exiting current process.")
 		os.Exit(0)
 	} else {
-		err = syscall.Exec(execPath, os.Args, os.Environ())
+		restartEnv := os.Environ()
+		if restartTokenEnv := client.HaboUpdateRestartEnvironment(); restartTokenEnv != "" {
+			restartEnv = append(restartEnv, restartTokenEnv)
+		}
+		err = syscall.Exec(execPath, os.Args, restartEnv)
 		if err != nil {
 			log.Errorf("Failed to exec new process: %v", err)
 			cmd := exec.Command(execPath, os.Args[1:]...)
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
 			cmd.Stdin = os.Stdin
+			cmd.Env = restartEnv
 			if startErr := cmd.Start(); startErr != nil {
 				log.Errorf("Fallback process start also failed: %v", startErr)
 				return
