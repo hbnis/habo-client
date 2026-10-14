@@ -6,6 +6,9 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
+	"net/url"
+	"runtime"
 	"testing"
 )
 
@@ -46,5 +49,50 @@ func TestDecompressUpdate(t *testing.T) {
 	}
 	if !bytes.Equal(got, want) {
 		t.Fatalf("decompressed payload = %q, want %q", got, want)
+	}
+}
+
+
+func TestAllowedGitHubURL(t *testing.T) {
+	tests := []struct {
+		raw  string
+		want bool
+	}{
+		{raw: "https://api.github.com/repos/hbnis/habo-client/releases/latest", want: true},
+		{raw: "https://github.com/hbnis/habo-client/releases/download/v0.1.7/update-linux-amd64.gz", want: true},
+		{raw: "https://release-assets.githubusercontent.com/example", want: true},
+		{raw: "http://github.com/hbnis/habo-client", want: false},
+		{raw: "https://github.com.evil.example/hbnis/habo-client", want: false},
+		{raw: "https://user:pass@github.com/hbnis/habo-client", want: false},
+		{raw: "https://evil.example/update.gz", want: false},
+	}
+
+	for _, tt := range tests {
+		parsed, err := url.Parse(tt.raw)
+		if err != nil {
+			t.Fatalf("url.Parse(%q): %v", tt.raw, err)
+		}
+		if got := allowedGitHubURL(parsed); got != tt.want {
+			t.Fatalf("allowedGitHubURL(%q) = %v, want %v", tt.raw, got, tt.want)
+		}
+	}
+}
+
+func TestUpdaterRefusesUnsignedRelease(t *testing.T) {
+	u := NewUpdater("0.1.0", "hbnis", "habo-client", "update-")
+	payloadName := "update-" + runtime.GOOS + "-" + runtime.GOARCH + ".gz"
+	if runtime.GOOS == "windows" {
+		payloadName = "update-" + runtime.GOOS + "-" + runtime.GOARCH + ".exe.gz"
+	}
+	u.latestRelease = &releaseResponse{
+		TagName: "v0.1.1",
+		Assets: []releaseAsset{{
+			Name:               payloadName,
+			BrowserDownloadURL: "https://github.com/hbnis/habo-client/releases/download/v0.1.1/" + payloadName,
+		}},
+	}
+
+	if err := u.Update(); !errors.Is(err, ErrorNoSignature) {
+		t.Fatalf("Update() error = %v, want ErrorNoSignature", err)
 	}
 }
