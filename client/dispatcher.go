@@ -79,6 +79,15 @@ func isHaboMarketTopic(topic string) bool {
 	return topic == lib.NatsMarketOrdersIngest || topic == lib.NatsMarketHistoriesIngest
 }
 
+func trustedHaboIngestTarget(target string) bool {
+	if !strings.HasPrefix(target, "habo+https://") && !strings.HasPrefix(target, "habo+http://") {
+		return false
+	}
+	baseURL := strings.TrimRight(strings.TrimPrefix(target, "habo+"), "/")
+	_, err := trustedHaboResponseURL(baseURL, "/api/client/ingest", false)
+	return err == nil
+}
+
 func createDispatcher() {
 	dis = &dispatcher{}
 
@@ -111,6 +120,10 @@ func createUploaders(targets []string) []uploader {
 		var u uploader
 		switch {
 		case strings.HasPrefix(target, "habo+https://") || strings.HasPrefix(target, "habo+http://"):
+			if !trustedHaboIngestTarget(target) {
+				log.Warnf("Refusing untrusted Habo private ingest target: %s", target)
+				continue
+			}
 			u = newHaboUploader(target)
 		case strings.HasPrefix(target, "http+pow://") || strings.HasPrefix(target, "https+pow://"):
 			u = newHTTPUploaderPow(target)

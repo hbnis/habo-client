@@ -299,6 +299,21 @@ func TestHaboUploadQueuePersistsAndReloadsJobs(t *testing.T) {
 		t.Fatalf("queue files = %v, want one json file", entries)
 	}
 
+	info, err := entries[0].Info()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Mode().Perm(); got != 0600 {
+		t.Fatalf("queue file permissions = %o, want 600", got)
+	}
+	persisted, err := os.ReadFile(filepath.Join(dir, entries[0].Name()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(persisted), "persist-token") {
+		t.Fatal("queue file persisted the bearer token instead of only its fingerprint")
+	}
+
 	reloaded := newHaboUploadQueue("https://example.invalid", &http.Client{}, dir, false)
 	if reloaded.depth() != 1 {
 		t.Fatalf("reloaded depth = %d, want 1", reloaded.depth())
