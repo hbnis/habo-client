@@ -1,6 +1,9 @@
 package client
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 func TestValidateHaboBaseURL(t *testing.T) {
 	tests := []struct {
@@ -39,5 +42,60 @@ func TestTrustedHaboResponseURLRejectsOriginChange(t *testing.T) {
 	}
 	if _, err := trustedHaboResponseURL("https://habonis.com/client/connect?code=ABCDE-23456", "/client/connect", true); err != nil {
 		t.Fatalf("rejected trusted pairing URL: %v", err)
+	}
+}
+
+
+func TestRestoreHaboTokenFromRestartEnvironment(t *testing.T) {
+	token := "abcdefghijklmnopqrstuvwxyzABCDEFGH1234567890"
+	t.Setenv(haboRestartTokenEnvKey, token)
+
+	var saved string
+	restored, err := restoreHaboTokenFromRestartEnvironment(func(value string) error {
+		saved = value
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("restore returned error: %v", err)
+	}
+	if !restored {
+		t.Fatal("expected restart token to be restored")
+	}
+	if saved != token {
+		t.Fatalf("saved token = %q, want %q", saved, token)
+	}
+	if got := os.Getenv(haboRestartTokenEnvKey); got != "" {
+		t.Fatalf("restart token environment was not cleared: %q", got)
+	}
+}
+
+func TestRestoreHaboTokenFromRestartEnvironmentRejectsInvalidToken(t *testing.T) {
+	t.Setenv(haboRestartTokenEnvKey, "short")
+
+	called := false
+	restored, err := restoreHaboTokenFromRestartEnvironment(func(value string) error {
+		called = true
+		return nil
+	})
+	if err == nil {
+		t.Fatal("expected invalid restart token error")
+	}
+	if restored {
+		t.Fatal("invalid restart token must not be reported restored")
+	}
+	if called {
+		t.Fatal("invalid restart token must not be persisted")
+	}
+	if got := os.Getenv(haboRestartTokenEnvKey); got != "" {
+		t.Fatalf("invalid restart token environment was not cleared: %q", got)
+	}
+}
+
+func TestHaboUpdateRestartEnvironmentUsesCurrentToken(t *testing.T) {
+	setTestHaboToken(t, "restart-token-abcdefghijklmnopqrstuvwxyz123456")
+	got := HaboUpdateRestartEnvironment()
+	want := haboRestartTokenEnvKey + "=restart-token-abcdefghijklmnopqrstuvwxyz123456"
+	if got != want {
+		t.Fatalf("restart environment = %q, want %q", got, want)
 	}
 }
