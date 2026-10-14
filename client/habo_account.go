@@ -17,7 +17,10 @@ import (
 	"time"
 )
 
-const defaultHaboHubURL = "https://habonis.com"
+const (
+	defaultHaboHubURL      = "https://habonis.com"
+	haboRestartTokenEnvKey = "HABO_UPDATE_RESTART_TOKEN"
+)
 
 type haboClientConfig struct {
 	Token          string `json:"token,omitempty"`
@@ -286,6 +289,41 @@ func haboDeviceName() string {
 
 func GetHaboToken() string {
 	return loadHaboToken()
+}
+
+// HaboUpdateRestartEnvironment returns a one-shot environment entry that
+// carries the current device token into the freshly replaced process. This is
+// only used for the immediate self-update restart; the new process persists
+// the token back into the normal protected client.json store and removes the
+// environment variable before continuing.
+func HaboUpdateRestartEnvironment() string {
+	token := strings.TrimSpace(GetHaboToken())
+	if token == "" {
+		return ""
+	}
+	return haboRestartTokenEnvKey + "=" + token
+}
+
+func restoreHaboTokenFromRestartEnvironment(save func(string) error) (bool, error) {
+	token := strings.TrimSpace(os.Getenv(haboRestartTokenEnvKey))
+	if token == "" {
+		return false, nil
+	}
+	_ = os.Unsetenv(haboRestartTokenEnvKey)
+	if len(token) < 32 || len(token) > 256 {
+		return false, errors.New("invalid Habo restart token")
+	}
+	if err := save(token); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// RestoreHaboTokenAfterUpdate consumes the one-shot token handoff created by
+// restartProcess. It makes auto-updates resilient if the freshly replaced
+// executable cannot immediately read the previous client.json for any reason.
+func RestoreHaboTokenAfterUpdate() (bool, error) {
+	return restoreHaboTokenFromRestartEnvironment(saveHaboToken)
 }
 
 func RefreshHaboAccount() HaboAccountState {
