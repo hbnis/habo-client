@@ -10,7 +10,9 @@ jobs:
     uses: ./.github/workflows/build.yml
 
   go-validation:
-    name: Go package vet and tests
+    # Keep the required legacy check name in GitHub branch protection.
+    # This job now tests Go packages only; it does not build a Linux executable.
+    name: build / Build linux
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
