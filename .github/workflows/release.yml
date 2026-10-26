@@ -29,10 +29,6 @@ jobs:
 
       - uses: actions/download-artifact@v6
         with:
-          name: build-linux
-          path: dist/linux
-      - uses: actions/download-artifact@v6
-        with:
           name: build-windows
           path: dist/windows
       - name: Sign updater payloads
@@ -40,7 +36,6 @@ jobs:
           HABO_UPDATE_SIGNING_KEY: ${{ secrets.HABO_UPDATE_SIGNING_KEY }}
         run: |
           go run ./scripts/sign-updates.go \
-            dist/linux/update-linux-amd64.gz \
             dist/windows/update-windows-amd64.exe.gz
 
       # Public GitHub releases contain updater payloads and detached signatures
@@ -52,8 +47,6 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           gh release upload "${{ github.event.release.tag_name }}" \
-            dist/linux/update-linux-amd64.gz \
-            dist/linux/update-linux-amd64.gz.sig \
             dist/windows/update-windows-amd64.exe.gz \
             dist/windows/update-windows-amd64.exe.gz.sig \
             --clobber

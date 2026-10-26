@@ -1,10 +1,7 @@
 # .github/workflows/build.yml
-#
-# Reusable build workflow, shared by test-build.yml (push/PR) and
-# release.yml (release published). CI keeps the Linux validation leg and
-# Windows client build, but does not build macOS because Habo Client is
-# Windows-only. Release callers may opt in to short-lived updater payload
-# artifacts used by the signing/publish job.
+# Reusable Windows-only client build for CI and releases.
+# Go package validation on Linux is handled by test-build.yml without building
+# or packaging an unused Linux executable.
 
 on:
   workflow_call:
@@ -15,25 +12,15 @@ on:
         type: string
         default: ''
       upload_artifacts:
-        description: Upload short-lived updater payloads for a release job
+        description: Upload short-lived Windows updater payload for a release job
         required: false
         type: boolean
         default: false
 
 jobs:
   build:
-    name: Build ${{ matrix.os }}
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: linux
-            runner: ubuntu-latest
-            release_artifacts: update-linux-amd64.gz
-          - os: windows
-            runner: ubuntu-latest
-            release_artifacts: update-windows-amd64.exe.gz
+    name: Build windows
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
 
@@ -47,35 +34,18 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: '22'
-          cache: 'npm'
+          cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Build
+      - name: Build Windows client
         env:
           HABO_VERSION: ${{ inputs.version_ref_name }}
-        run: make build-${{ matrix.os }}
+        run: make build-windows
 
-      # Runs only on the linux leg, which already has libpcap-dev and the
-      # frontend build (both required by the root package's cgo imports
-      # and //go:embed directive) from the build step above - no need to
-      # duplicate that setup in a separate job.
-      - name: Vet
-        if: matrix.os == 'linux'
-        run: go vet ./...
-
-      - name: Test
-        if: matrix.os == 'linux'
-        run: go test ./...
-
-      - name: Test signed updater module
-        if: matrix.os == 'linux'
-        working-directory: third_party/go-githubupdate
-        run: go test ./...
-
-      - name: Upload release updater payload
+      - name: Upload Windows updater payload
         if: inputs.upload_artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: build-${{ matrix.os }}
-          path: ${{ matrix.release_artifacts }}
+          name: build-windows
+          path: update-windows-amd64.exe.gz
           retention-days: 1

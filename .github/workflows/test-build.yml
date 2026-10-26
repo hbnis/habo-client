@@ -8,3 +8,27 @@ on:
 jobs:
   build:
     uses: ./.github/workflows/build.yml
+
+  go-validation:
+    # Keep the required legacy check name in GitHub branch protection.
+    # This job now tests Go packages only; it does not build a Linux executable.
+    name: build / Build linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Go packet capture dependency
+        run: sudo apt-get update && sudo apt-get install -y libpcap-dev
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      # Exercise the same packages with actual tests as before, without
+      # compiling the Linux GUI or generating an unused updater payload.
+      - name: Vet Go packages
+        run: go vet ./client/... ./internal/dashboard/... ./internal/winstate/... ./internal/pcapdriver/...
+      - name: Test Go packages
+        run: go test ./client/... ./internal/dashboard/... ./internal/winstate/... ./internal/pcapdriver/...
+      - name: Test signed updater module
+        working-directory: third_party/go-githubupdate
+        run: go test ./...
