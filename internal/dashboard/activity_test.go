@@ -73,7 +73,7 @@ func TestRecordActivity_GoesStaleAfterTimeout(t *testing.T) {
 	}
 }
 
-func TestRecordActivity_GoingStaleClearsCountersAndServer(t *testing.T) {
+func TestRecordActivity_GoingStaleKeepsSessionCounters(t *testing.T) {
 	resetStatusForTest()
 	resetActivityForTest()
 	resetCountersForTest()
@@ -90,8 +90,8 @@ func TestRecordActivity_GoingStaleClearsCountersAndServer(t *testing.T) {
 	if GetStatus().CaptureRunning {
 		t.Fatalf("expected capture to have gone stale")
 	}
-	if counts := GetUploadCounts(); len(counts) != 0 {
-		t.Fatalf("expected counters cleared after going stale, got %+v", counts)
+	if counts := GetUploadCounts(); counts["marketorders.ingest"] != 1 {
+		t.Fatalf("expected session counters to persist after capture goes idle, got %+v", counts)
 	}
 	got := GetStatus()
 	if got.ServerID != 0 || got.IngestBaseURL != "" {

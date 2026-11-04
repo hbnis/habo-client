@@ -4,6 +4,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/ao-data/albiondata-client/internal/dashboard"
 	"github.com/ao-data/albiondata-client/lib"
 	"github.com/ao-data/albiondata-client/log"
 	uuid "github.com/nu7hatch/gouuid"
@@ -106,6 +107,10 @@ func (op operationAuctionGetItemAverageStatsResponse) Process(state *albionState
 		log.Info("Auction Stats Response - no history\n\n")
 		return
 	}
+
+	// Successfully decoding history proves that market traffic is readable,
+	// even when the user has not browsed a sell-order listing yet.
+	dashboard.SetEncryptionStatus(dashboard.EncryptionClear)
 
 	// Sort history by descending time so the newest is always first in the list
 	sort.SliceStable(histories, func(i, j int) bool {

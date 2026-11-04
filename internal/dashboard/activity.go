@@ -48,10 +48,9 @@ func staleCheckLoop() {
 			wasRunning := GetStatus().CaptureRunning
 			SetCaptureRunning(false)
 			if wasRunning {
-				// Capture just went idle - counts, the detected server, and
-				// the last observed encryption status are no longer
-				// meaningful for whatever comes next.
-				ResetCounters()
+				// Keep this-session counters even when Albion stops sending packets.
+				// Clearing them after 10 seconds made successful market scans look
+				// like they never happened. Only clear transient capture metadata.
 				SetServer(0, "")
 				SetEncryptionStatus(EncryptionUnknown)
 			}

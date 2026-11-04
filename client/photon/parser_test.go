@@ -62,3 +62,44 @@ func TestPendingSegments_RejectsOversizedTotalLength(t *testing.T) {
 		t.Fatalf("pendingSegments has %d entries, want 0 for an oversized totalLen", len(parser.pendingSegments))
 	}
 }
+
+// A duplicated fragment must not count twice and cause a partially filled
+// market response to be dispatched as a complete Photon message.
+func TestPendingSegments_DuplicateDoesNotCompleteMessage(t *testing.T) {
+	parser := NewPhotonParser(nil, nil, nil)
+	first := buildFragmentPacket(111, 2, 0, 12, 0, []byte("123456"))
+	parser.ReceivePacket(first)
+	parser.ReceivePacket(first)
+	seg := parser.pendingSegments[111]
+	if seg == nil || seg.bytesWritten != 6 || len(seg.fragments) != 1 {
+		t.Fatalf("duplicate inflated completion: %+v", seg)
+	}
+	parser.ReceivePacket(buildFragmentPacket(111, 2, 1, 12, 6, []byte("abcdef")))
+	if _, found := parser.pendingSegments[111]; found {
+		t.Fatal("complete message retained after receiving both unique fragments")
+	}
+}
+
+func TestPendingSegments_OutOfOrderAndOverlap(t *testing.T) {
+	parser := NewPhotonParser(nil, nil, nil)
+	parser.ReceivePacket(buildFragmentPacket(222, 2, 1, 12, 6, []byte("abcdef")))
+	parser.ReceivePacket(buildFragmentPacket(222, 2, 0, 12, 0, []byte("123456")))
+	if _, found := parser.pendingSegments[222]; found {
+		t.Fatal("out-of-order complete message was not released")
+	}
+
+	parser.ReceivePacket(buildFragmentPacket(333, 2, 0, 12, 0, []byte("123456")))
+	parser.ReceivePacket(buildFragmentPacket(333, 2, 1, 12, 4, []byte("abcdef")))
+	if _, found := parser.pendingSegments[333]; found {
+		t.Fatal("overlapping fragments should discard a corrupt segment")
+	}
+}
+
+func TestPendingSegments_RejectsInvalidFragmentBounds(t *testing.T) {
+	parser := NewPhotonParser(nil, nil, nil)
+	parser.ReceivePacket(buildFragmentPacket(444, 2, 0, 12, 11, []byte("ab")))
+	parser.ReceivePacket(buildFragmentPacket(445, 2, 2, 12, 0, []byte("ab")))
+	if len(parser.pendingSegments) != 0 {
+		t.Fatalf("invalid fragments allocated incomplete segments: %+v", parser.pendingSegments)
+	}
+}
