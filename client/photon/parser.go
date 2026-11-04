@@ -50,10 +50,17 @@ const (
 	crcFieldLength = 4
 )
 
+type fragmentRange struct {
+	offset int
+	length int
+}
+
 type segmentedPackage struct {
-	totalLength  int
-	bytesWritten int
-	payload      []byte
+	totalLength   int
+	fragmentCount int
+	bytesWritten  int
+	fragments     map[int]fragmentRange
+	payload       []byte
 }
 
 // RawPacket holds the raw UDP/TCP payload of one Photon packet.
@@ -425,61 +432,71 @@ func (p *PhotonParser) dispatchEvent(data []byte) {
 }
 
 func (p *PhotonParser) handleSendFragment(src []byte, offset, cmdLen int) int {
-	if cmdLen < fragmentHeaderLength || !available(src, offset, fragmentHeaderLength) {
+	if cmdLen < fragmentHeaderLength || !available(src, offset, cmdLen) {
 		return offset + cmdLen
 	}
 
 	startSeq := int(binary.BigEndian.Uint32(src[offset:]))
-	offset += 4
-	cmdLen -= 4
-	offset += 4 // fragmentCount
-	cmdLen -= 4
-	offset += 4 // fragmentNumber
-	cmdLen -= 4
-	totalLen := int(binary.BigEndian.Uint32(src[offset:]))
-	offset += 4
-	cmdLen -= 4
-	fragOffset := int(binary.BigEndian.Uint32(src[offset:]))
-	offset += 4
-	cmdLen -= 4
+	fragCount := int(binary.BigEndian.Uint32(src[offset+4:]))
+	fragNum := int(binary.BigEndian.Uint32(src[offset+8:]))
+	totalLen := int(binary.BigEndian.Uint32(src[offset+12:]))
+	fragOffset := int(binary.BigEndian.Uint32(src[offset+16:]))
+	offset += fragmentHeaderLength
+	fragLen := cmdLen - fragmentHeaderLength
 
-	fragLen := cmdLen
-	if fragLen < 0 || !available(src, offset, fragLen) {
+	// Do not allocate or count malformed fragments. Duplicate UDP packets
+	// must not trick an incomplete market response into being decoded.
+	if totalLen <= 0 || totalLen > maxSegmentTotalLength ||
+		fragCount <= 0 || fragCount > totalLen || fragNum < 0 || fragNum >= fragCount ||
+		fragLen <= 0 || fragOffset > totalLen || fragLen > totalLen-fragOffset {
 		return offset + fragLen
 	}
 
 	seg, ok := p.pendingSegments[startSeq]
 	if !ok {
-		if totalLen <= 0 || totalLen > maxSegmentTotalLength {
-			// Corrupt or hostile totalLength - refuse to allocate for it.
-			return offset + fragLen
-		}
-
 		if len(p.pendingSegments) >= maxPendingSegments {
 			p.evictOldestSegment()
 		}
-
 		seg = &segmentedPackage{
 			totalLength: totalLen,
-			payload:     make([]byte, totalLen),
+			fragmentCount: fragCount,
+			fragments: make(map[int]fragmentRange),
+			payload: make([]byte, totalLen),
 		}
 		p.pendingSegments[startSeq] = seg
 		p.segmentOrder = append(p.segmentOrder, startSeq)
 	}
 
-	end := fragOffset + fragLen
-	if end <= len(seg.payload) {
-		copy(seg.payload[fragOffset:end], src[offset:offset+fragLen])
-	}
-	offset += fragLen
-	seg.bytesWritten += fragLen
-
-	if seg.bytesWritten >= seg.totalLength {
+	if seg.totalLength != totalLen || seg.fragmentCount != fragCount {
 		delete(p.pendingSegments, startSeq)
-		p.handleSendReliable(seg.payload, 0, len(seg.payload))
+		return offset + fragLen
+	}
+	if existing, duplicate := seg.fragments[fragNum]; duplicate {
+		// A repeated identical fragment is normal on an unreliable network.
+		// Conflicting retransmissions invalidate this incomplete response.
+		if existing.offset != fragOffset || existing.length != fragLen ||
+			!bytes.Equal(seg.payload[fragOffset:fragOffset+fragLen], src[offset:offset+fragLen]) {
+			delete(p.pendingSegments, startSeq)
+		}
+		return offset + fragLen
+	}
+	for _, existing := range seg.fragments {
+		if fragOffset < existing.offset+existing.length && existing.offset < fragOffset+fragLen {
+			delete(p.pendingSegments, startSeq)
+			return offset + fragLen
+		}
 	}
 
-	return offset
+	copy(seg.payload[fragOffset:fragOffset+fragLen], src[offset:offset+fragLen])
+	seg.fragments[fragNum] = fragmentRange{offset: fragOffset, length: fragLen}
+	seg.bytesWritten += fragLen
+	if len(seg.fragments) == seg.fragmentCount {
+		delete(p.pendingSegments, startSeq)
+		if seg.bytesWritten == seg.totalLength {
+			p.handleSendReliable(seg.payload, 0, len(seg.payload))
+		}
+	}
+	return offset + fragLen
 }
 
 // evictOldestSegment drops the oldest incomplete fragment reassembly to
