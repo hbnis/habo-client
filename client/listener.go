@@ -17,6 +17,11 @@ import (
 	"github.com/google/gopacket/pcap"
 )
 
+// captureSnaplen must cover full-size UDP datagrams, including NIC receive-coalesced
+// packets. A 2048-byte snaplen silently truncated larger market order replies
+// while short market-history replies continued to work.
+const captureSnaplen = 65535
+
 type listener struct {
 	handle        *pcap.Handle
 	sourcePackets chan gopacket.Packet
@@ -54,7 +59,7 @@ func newListener(router *Router) *listener {
 // nothing to recover it, which would otherwise crash capture on every
 // other interface too.
 func (l *listener) startOnline(device string, port int) {
-	handle, err := pcap.OpenLive(device, 2048, false, pcap.BlockForever)
+	handle, err := pcap.OpenLive(device, captureSnaplen, false, pcap.BlockForever)
 	if err != nil {
 		log.Errorf("Could not open %s for capture, skipping this interface: %v", device, err)
 		return
@@ -164,6 +169,16 @@ func (l *listener) stop() {
 }
 
 func (l *listener) processPacket(packet gopacket.Packet) {
+	// Never feed a truncated datagram into the Photon decoder: a partial
+	// market response looks like missing or malformed orders. Log sizes only.
+	if meta := packet.Metadata(); meta != nil {
+		info := meta.CaptureInfo
+		if meta.Truncated || (info.Length > 0 && info.CaptureLength < info.Length) {
+			log.Warnf("Skipping truncated network packet (captured=%d bytes, original=%d bytes).", info.CaptureLength, info.Length)
+			return
+		}
+	}
+
 	ipLayer := packet.Layer(layers.LayerTypeIPv4)
 	if ipLayer == nil {
 		return
@@ -236,10 +251,9 @@ func (l *listener) onResponse(opCode byte, returnCode int16, _ string, params ma
 		params[253] = uint16(opCode)
 	}
 
-	// Market order data arrives as params[0]=[]string (set by dispatchResponse in parser).
-	if _, ok := params[0].([]string); ok {
-		params[253] = uint16(opAuctionGetOffers)
-	}
+	// Preserve the operation code supplied by Albion in params[253].
+	// An unrelated response can contain a []string at params[0]; inferring
+	// AuctionGetOffers from its type misroutes it and produces false logs.
 
 	// Report only metadata, never raw market payloads. This helps diagnose
 	// individual installations where history is captured but orders stay at 0.
