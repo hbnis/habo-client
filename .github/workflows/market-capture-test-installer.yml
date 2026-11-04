@@ -1,0 +1,38 @@
+name: Build market capture test installer
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - .github/workflows/market-capture-test-installer.yml
+
+permissions:
+  contents: read
+
+jobs:
+  installer:
+    name: Build private v0.2.1-rc1 Windows test installer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build test installer
+        env:
+          HABO_VERSION: v0.2.1-rc1
+        run: make build-windows
+      - name: Upload private test installer
+        uses: actions/upload-artifact@v6
+        with:
+          name: habo-client-v0.2.1-rc1-test-installer
+          path: habo-client-amd64-installer.exe
+          if-no-files-found: error
+          retention-days: 7
