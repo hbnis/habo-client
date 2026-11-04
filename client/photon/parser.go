@@ -390,33 +390,63 @@ func (p *PhotonParser) dispatchResponse(data []byte) {
 	opCode := data[0]
 	returnCode := int16(binary.LittleEndian.Uint16(data[1:3]))
 
-	// Per Protocol18Deserializer.DeserializeOperationResponse: after returnCode,
-	// if bytes remain read one type byte + its value (the debug message), then
-	// the parameter table.
+	// Protocol18 responses contain a typed debug value followed by a
+	// parameter table. Never return early because the debug value is an
+	// array: the actual operation code (key 253) and order list (key 0)
+	// may follow it in the table.
 	buf := bytes.NewBuffer(data[3:])
 	debugMsg := ""
+	var debugArray []string
 
 	if buf.Len() > 0 {
 		tc, _ := buf.ReadByte()
-		val := deserialize(buf, tc)
-		switch v := val.(type) {
+		switch v := deserialize(buf, tc).(type) {
 		case string:
 			debugMsg = v
 		case []string:
-			// Albion embeds market-order data as a typed string array in the
-			// position where the debug message would normally be.
-			// Surface it as params[0] so the listener can identify and route it.
-			params := map[byte]interface{}{0: v}
-			if p.OnResponse != nil {
-				p.OnResponse(opCode, returnCode, "", params)
-			}
-			return
+			debugArray = v
 		}
 	}
 
 	params := readParameterTable(buf)
+	// Compatibility for older packets that placed the order array in the
+	// debug slot: only use it when the original operation identifies an
+	// auction-order response. Do not turn arbitrary string-array responses
+	// into AuctionGetOffers.
+	if debugArray != nil {
+		isMarket := opCode == 81 || opCode == 82
+		if wireCode, found := params[253]; found {
+			isMarket = isAuctionOrderCode(wireCode)
+		}
+		if _, hasOrders := params[0]; isMarket && !hasOrders {
+			params[0] = debugArray
+		}
+	}
 	if p.OnResponse != nil {
 		p.OnResponse(opCode, returnCode, debugMsg, params)
+	}
+}
+
+// Only the two auction-list operation codes can use the legacy response
+// fallback. Other Protocol18 responses must keep their own operation code.
+func isAuctionOrderCode(value interface{}) bool {
+	switch code := value.(type) {
+	case byte:
+		return code == 81 || code == 82
+	case int16:
+		return code == 81 || code == 82
+	case uint16:
+		return code == 81 || code == 82
+	case int32:
+		return code == 81 || code == 82
+	case uint32:
+		return code == 81 || code == 82
+	case int64:
+		return code == 81 || code == 82
+	case uint64:
+		return code == 81 || code == 82
+	default:
+		return false
 	}
 }
 
