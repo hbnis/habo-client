@@ -241,6 +241,19 @@ func (l *listener) onResponse(opCode byte, returnCode int16, _ string, params ma
 		params[253] = uint16(opAuctionGetOffers)
 	}
 
+	// Report only metadata, never raw market payloads. This helps diagnose
+	// individual installations where history is captured but orders stay at 0.
+	if code, ok := toUint16(params[253]); ok {
+		operation := OperationType(normalizeOperationCode(code))
+		if operation == opAuctionGetOffers || operation == opAuctionGetRequests {
+			if orders, decoded := params[0].([]string); !decoded {
+				log.Warnf("Market order response had no decoded order list (opcode=%d, result=%d, fields=%d).", code, returnCode, len(params))
+			} else if len(orders) == 0 {
+				log.Infof("Market order response contained no orders (opcode=%d, result=%d).", code, returnCode)
+			}
+		}
+	}
+
 	if returnCode != 0 {
 		rc := uint16(returnCode)
 		name := returnCodeName(rc)
